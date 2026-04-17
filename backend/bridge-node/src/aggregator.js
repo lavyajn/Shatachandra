@@ -1,62 +1,53 @@
-const { startZmqListener } = require('./zmq_listener');
-const { startWsServer, broadcastToReact } = require('./ws_server');
-const zmq = require("zeromq");
+const zmq = require('zeromq');
+const WebSocket = require('ws');
 
-// NEW: Command Bus to send signals TO the C++ Engine (or sim_engine.js)
-const cmdPub = new zmq.Publisher();
+async function runAggregator() {
+  // 1. Listen to Telemetry from server.js
+  const telemetrySub = new zmq.Subscriber();
+  telemetrySub.connect('tcp://127.0.0.1:5555');
+  telemetrySub.subscribe('');
 
-async function runBridge() {
-    console.log("=========================================");
-    console.log(" SHATACHANDRA TELEMETRY BRIDGE STARTING  ");
-    console.log("=========================================");
+  // 2. Send Commands to server.js
+  const commandPub = new zmq.Publisher();
+  // Using bind here so it can act as the host for the engine's subscriber
+  await commandPub.bind('tcp://127.0.0.1:5556'); 
 
-    // 1. Initialize the Command Bus on Port 5556
-    try {
-        await cmdPub.bind("tcp://127.0.0.1:5556");
-        console.log("🔵 Command Bus active on tcp://127.0.0.1:5556");
-    } catch (err) {
-        console.error("[ERROR] Could not bind Command Bus:", err);
-    }
+  // 3. Talk to React via WebSockets
+  const wss = new WebSocket.Server({ port: 8080 });
+  console.log('📡 Aggregator Bridge running on ws://localhost:8080');
 
-    // 2. Start the WebSocket Server and capture the instance to listen for React commands
-    const wss = startWsServer(); // Ensure your ws_server.js returns the wss instance
+  wss.on('connection', (ws) => {
+    console.log('🟢 Frontend UI connected to bridge');
 
-    // 3. Listen for React commands (CONTROL messages)
-    if (wss) {
-       // bridge-node/aggregator.js
-wss.on('connection', (ws) => {
-    ws.on('message', (message) => {
-        const data = JSON.parse(message);
-        if (data.type === 'CONTROL') {
-            if (data.command === 'STOP_ATTACK') {
-                cmdPub.send("STOP");
-            } else if (data.command === 'START_SCENARIO') {
-                // Format: START_TYPE_TARGET (e.g., START_DDOS_2)
-                cmdPub.send(`START_${data.scenario}_${data.targetId}`);
-            }
+    // Translate React clicks into ZMQ Engine Commands
+    ws.on('message', async (message) => {
+      try {
+        const cmdText = message.toString().toUpperCase();
+        
+        if (cmdText.includes('STOP')) {
+          await commandPub.send('STOP');
+        } else if (cmdText.includes('START')) {
+          // Safely extract the attack type and target node number
+          const attack = cmdText.includes('SPOOFING') ? 'SPOOFING' : (cmdText.includes('FDI') ? 'FDI' : 'DDOS');
+          const targetMatch = cmdText.match(/\d+/);
+          const target = targetMatch ? targetMatch[0] : '0';
+          
+          await commandPub.send(`START_${attack}_${target}`);
         }
+      } catch (error) {
+        console.error('[WS] Error processing command:', error);
+      }
     });
-});
-    }
+  });
 
-    // 4. Existing ZMQ Telemetry Listener (C++ -> React)
-    startZmqListener((telemetryString) => {
-        try {
-            const data = JSON.parse(telemetryString);
-            
-            // Clean readout
-            process.stdout.write(`\r[LIVE] Nodes: ${data.nodes.length} | C++ Engine: ${data.decision_log.substring(0, 60).padEnd(60)}`);
-            
-        } catch (e) {
-            console.log("Raw Data:", telemetryString);
-        }
-
-        // Send to React
-        broadcastToReact(telemetryString);
-
-    }).catch(err => {
-        console.error("[ERROR] ZMQ Listener crashed:", err);
+  // Stream the physical node data straight to the 3D Canvas
+  for await (const [msg] of telemetrySub) {
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg.toString());
+      }
     });
+  }
 }
 
-runBridge();
+runAggregator().catch(console.error);

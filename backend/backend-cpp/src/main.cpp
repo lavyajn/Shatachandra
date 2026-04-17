@@ -50,33 +50,38 @@ uint32_t target_id = 0; // Default target
 
 while (true) {
     // --- A. COMMAND LISTENER (Non-blocking) ---
-    zmq::message_t cmd_msg;
-    if (command_sub.recv(cmd_msg, zmq::recv_flags::dontwait)) {
-        std::string cmd_str(static_cast<char*>(cmd_msg.data()), cmd_msg.size());
-        
-        if (cmd_str == "STOP") {
-            is_attack_active = false;
-            active_scenario = "NONE";
-            current_decision = "Attack Terminated. Normalizing System State.";
+    // --- A. COMMAND LISTENER (Non-blocking) ---
+        zmq::message_t cmd_msg;
+        if (command_sub.recv(cmd_msg, zmq::recv_flags::dontwait)) {
+            std::string cmd_str(static_cast<char*>(cmd_msg.data()), cmd_msg.size());
             
-            // Restore trust scores for all non-isolated nodes
-            for (auto& node : live_graph.nodes) {
-                if (node.status != NodeStatus::ISOLATED) node.status = NodeStatus::NORMAL;
-                node.trust_score = 100.0f;
-            }
-        } else if (cmd_str.find("START_") == 0) {
-            // Parse "START_SCENARIO_ID" (e.g., START_DDOS_2)
-            size_t first_und = cmd_str.find("_");
-            size_t last_und = cmd_str.find_last_of("_");
-            
-            if (first_und != std::string::npos && last_und != std::string::npos && first_und != last_und) {
-                active_scenario = cmd_str.substr(first_und + 1, last_und - first_und - 1);
-                target_id = std::stoi(cmd_str.substr(last_und + 1));
-                is_attack_active = true;
-                current_decision = "SCENARIO: " + active_scenario + " INITIATED ON NODE " + std::to_string(target_id);
+            if (cmd_str == "STOP") {
+                is_attack_active = false;
+                active_scenario = "NONE";
+                
+                // THE FIX: Reset target_id to an invalid number so it doesn't default to Node 0
+                target_id = 999; 
+                
+                current_decision = "Attack Terminated. Normalizing System State.";
+                
+                // Partial reset: Restore trust scores
+                for (auto& node : live_graph.nodes) {
+                    if (node.status != NodeStatus::ISOLATED) node.status = NodeStatus::NORMAL;
+                    node.trust_score = 100.0f;
+                }
+            } else if (cmd_str.find("START_") == 0) {
+                // Parse "START_SCENARIO_ID" (e.g., START_DDOS_2)
+                size_t first_und = cmd_str.find("_");
+                size_t last_und = cmd_str.find_last_of("_");
+                
+                if (first_und != std::string::npos && last_und != std::string::npos && first_und != last_und) {
+                    active_scenario = cmd_str.substr(first_und + 1, last_und - first_und - 1);
+                    target_id = std::stoi(cmd_str.substr(last_und + 1));
+                    is_attack_active = true;
+                    current_decision = "SCENARIO: " + active_scenario + " INITIATED ON NODE " + std::to_string(target_id);
+                }
             }
         }
-    }
 
     // --- B. BASELINE TRAFFIC (Always Runs) ---
     // This ensures the grid remains "alive" visually even without an attack.
