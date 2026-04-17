@@ -20,19 +20,24 @@ function executeSmartDefense(nodes, threatNode) {
 
 function evaluateAndDefend(nodes, currentDecision) {
   for (const node of nodes) {
-    if (node.status === NodeStatus.ISOLATED) continue;
-
-    if (node.incoming_packets > EngineParams.DDOS_THRESHOLD) {
-      node.trust_score -= EngineParams.TRUST_DECAY;
-      node.status = NodeStatus.WARNING;
-    } else if (node.trust_score < 100.0) {
-      node.trust_score += 0.5; 
-      if (node.trust_score > 80.0 && node.status === NodeStatus.WARNING) {
-        node.status = NodeStatus.NORMAL;
+    // 1. Basic status check for logic, but we clamp later for ALL nodes
+    if (node.status !== NodeStatus.ISOLATED) {
+      if (node.incoming_packets > EngineParams.DDOS_THRESHOLD) {
+        node.trust_score -= EngineParams.TRUST_DECAY;
+        node.status = NodeStatus.WARNING;
+      } else if (node.trust_score < 100.0) {
+        node.trust_score += 0.5; 
+        if (node.trust_score > 80.0 && node.status === NodeStatus.WARNING) {
+          node.status = NodeStatus.NORMAL;
+        }
       }
     }
 
-    if (node.trust_score <= EngineParams.CRITICAL_TRUST && node.status !== NodeStatus.COMPROMISED) {
+    // 2. ATOMIC CLAMP: This runs for every node, every tick, no matter what
+    node.trust_score = Math.max(0, Math.min(100, node.trust_score));
+
+    // 3. Defense Trigger
+    if (node.trust_score <= EngineParams.CRITICAL_TRUST && node.status !== NodeStatus.COMPROMISED && node.status !== NodeStatus.ISOLATED) {
       node.status = NodeStatus.COMPROMISED;
       currentDecision.text = executeSmartDefense(nodes, node);
     }
