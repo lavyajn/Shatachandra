@@ -1,0 +1,14 @@
+{
+  "name": "smart-grid-cyber-attack-platform",
+  "version": "1.0.0",
+  "description": "Real-time smart power grid cyber attack visualization platform",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node backend/server.js",
+    "client": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
