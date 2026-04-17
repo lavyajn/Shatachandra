@@ -57,6 +57,15 @@ int main() {
         zmq::message_t cmd_msg;
         if (command_listener.recv(cmd_msg, zmq::recv_flags::dontwait)) {
             std::string cmd(static_cast<char*>(cmd_msg.data()), cmd_msg.size());
+
+            // --- NEW: HANDLE RESET ---
+            if (cmd == "RESET") {
+                std::cout << "\n[SYSTEM] Master Reset Initiated. Restoring Grid...\n";
+                live_graph = initialize_world();
+                current_decision = "System Stable. Monitoring packet flow.";
+                tick_counter = 0; 
+                continue; // Skip the rest of the loop for this tick
+            }
             
             if (cmd.find("ATTACK:") == 0) {
                 size_t first_colon = cmd.find(':');

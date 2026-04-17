@@ -22,21 +22,23 @@ async function runBridge() {
     console.log("🔵 ZMQ Publisher connected to C++ Commands at tcp://127.0.0.1:5556");
 
     // --- HANDLE INBOUND ATTACKS FROM REACT ---
+    // --- HANDLE INBOUND ATTACKS FROM REACT ---
     wss.on('connection', (ws) => {
         ws.on('message', async (message) => {
             try {
                 const data = JSON.parse(message);
                 
-                // If React sends an attack command, translate it for C++
                 if (data.command === "INJECT_ATTACK") {
                     const type = data.payload.type;
                     const target = data.payload.targetNode;
-                    
-                    // The exact string format main.cpp is waiting for
                     const cmdString = `ATTACK:${type}:${target}`;
-                    
                     console.log(`[FORWARDING] React -> C++ : ${cmdString}`);
                     await commandPub.send(cmdString);
+                } 
+                // --- NEW: THE RESET COMMAND ---
+                else if (data.command === "RESET") {
+                    console.log(`[FORWARDING] React -> C++ : RESET`);
+                    await commandPub.send("RESET");
                 }
             } catch (err) {
                 console.error("Failed to parse WebSocket message from React");

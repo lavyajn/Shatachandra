@@ -67,6 +67,13 @@ export default function App() {
             console.log(`Dispatched ${attackType} attack to Node 2`);
         }
     };
+    // Dispatch the Reset command
+    const handleReset = () => {
+        if (wsRef && wsRef.readyState === 1) {
+            wsRef.send(JSON.stringify({ command: "RESET" }));
+            console.log(`Dispatched RESET command`);
+        }
+    };
     // Checks both ends of the wire. If either node is compromised (2) or warning (1), the link inherits that color.
     const getLinkStatus = (nodeA, nodeB) => {
         const statA = nodes.find(n => n.id === nodeA)?.status || 0;
@@ -105,6 +112,7 @@ export default function App() {
 
                     <button 
                         onClick={handleSimulateAttack} 
+                        
                         style={{ 
                             width: '100%', padding: '12px', backgroundColor: '#ff3333', 
                             color: '#fff', border: 'none', cursor: 'pointer', 
@@ -113,7 +121,19 @@ export default function App() {
                         }}>
                         SIMULATE ATTACK
                     </button>
+
+                    {/* --- NEW: RESTORE GRID BUTTON --- */}
+                    <button 
+                        onClick={handleReset} 
+                        style={{ 
+                            width: '100%', padding: '10px', backgroundColor: '#003322', 
+                            color: '#00ffcc', border: '1px solid #00ffcc', cursor: 'pointer', 
+                            fontWeight: 'bold', fontFamily: 'monospace', fontSize: '12px'
+                        }}>
+                        RESTORE GRID
+                    </button>
                 </div>
+                
 
                 {/* 2. LIVE TELEMETRY LOGS */}
                 <div style={{ backgroundColor: 'rgba(5, 5, 5, 0.9)', padding: '20px', border: '1px solid #00ffcc', borderRadius: '4px' }}>
