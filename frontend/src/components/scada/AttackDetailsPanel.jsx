@@ -1,12 +1,14 @@
-// AttackDetailsPanel.jsx — Active attack information
+// AttackDetailsPanel.jsx — Active attack/threat information (derived from status + trust)
 import { useState, useEffect } from 'react';
 import { ATTACK_LABELS, ATTACK_DESCRIPTIONS, ATTACK_COLORS } from '../../constants/theme';
 
 export default function AttackDetailsPanel({ node }) {
   const [duration, setDuration] = useState(0);
 
+  const isUnderThreat = node.status === 'high' || node.status === 'compromised';
+
   useEffect(() => {
-    if (!node.attackActive || !node.attackStartTime) {
+    if (!isUnderThreat || !node.attackStartTime) {
       setDuration(0);
       return;
     }
@@ -17,31 +19,34 @@ export default function AttackDetailsPanel({ node }) {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [node.attackActive, node.attackStartTime]);
+  }, [isUnderThreat, node.attackStartTime]);
 
-  if (!node.attackActive) {
+  if (!isUnderThreat) {
     return (
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="panel-title">🛡 Attack Status</div>
+        <div className="panel-title">🛡 Threat Status</div>
         <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--status-normal)' }}>No Active Attack</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>System operating normally</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--status-normal)' }}>No Active Threat</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+          Trust: {(node.trust ?? 100).toFixed(0)}% — System nominal
+        </div>
       </div>
     );
   }
 
-  const attackColor = ATTACK_COLORS[node.attackType] || '#ef4444';
+  const attackType = node.attackType || 'fdi';
+  const attackColor = ATTACK_COLORS[attackType] || '#ef4444';
   const startTime = node.attackStartTime
     ? new Date(node.attackStartTime).toLocaleTimeString('en-US', { hour12: false })
     : '--:--:--';
 
   return (
     <div className="panel" style={{ borderColor: attackColor + '40' }}>
-      <div className="panel-title">🛡 Attack Status</div>
+      <div className="panel-title">🛡 Threat Status</div>
 
       <div style={{ marginBottom: 10, textAlign: 'center' }}>
-        <span className={`attack-badge ${node.attackType}`}>
-          {ATTACK_LABELS[node.attackType]}
+        <span className={`attack-badge ${attackType}`}>
+          {ATTACK_LABELS[attackType] || 'ANOMALY'}
         </span>
       </div>
 
@@ -60,6 +65,16 @@ export default function AttackDetailsPanel({ node }) {
             {duration.toFixed(1)}s
           </span>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--text-muted)' }}>Trust Score</span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            color: (node.trust ?? 100) < 30 ? '#ef4444' : '#f59e0b',
+          }}>
+            {(node.trust ?? 100).toFixed(1)}%
+          </span>
+        </div>
       </div>
 
       <div style={{
@@ -71,7 +86,7 @@ export default function AttackDetailsPanel({ node }) {
         borderRadius: 6,
         lineHeight: 1.5
       }}>
-        {ATTACK_DESCRIPTIONS[node.attackType]}
+        {ATTACK_DESCRIPTIONS[attackType] || 'Anomalous behavior detected — Defense engine active.'}
       </div>
     </div>
   );

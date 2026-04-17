@@ -1,8 +1,8 @@
-// gridLayout.js — 2D positions for graph nodes
+// gridLayout.js — 2D positions for graph nodes (numeric IDs matching backend2)
 export const GRID_2D_POSITIONS = {
-  A: { x: 2000, y: 2000 },
-  B: { x: 400, y: 100 },
-  C: { x: 300, y: 350 },
-  D: { x: 550, y: 300 },
-  E: { x: 100, y: 400 },
+  '0': { x: 100, y: 100 },
+  '1': { x: 400, y: 100 },
+  '2': { x: 300, y: 350 },
+  '3': { x: 550, y: 300 },
+  '4': { x: 100, y: 400 },
 };

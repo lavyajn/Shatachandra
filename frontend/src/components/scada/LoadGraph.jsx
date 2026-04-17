@@ -7,7 +7,7 @@ export default function LoadGraph({ node }) {
   const predictedLoad = node.predictedLoad;
 
   const data = history.map((val, i) => ({
-    time: -(history.length - 1 - i) * 0.5,
+    time: -(history.length - 1 - i) * 0.1,
     load: parseFloat(val.toFixed(1)),
   }));
 

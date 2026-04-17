@@ -1,4 +1,4 @@
-// GridStatusPanel.jsx — Radial gauge showing load percentage
+// GridStatusPanel.jsx — Radial gauge showing load percentage + trust score
 import { useMemo } from 'react';
 import { STATUS_COLORS } from '../../constants/theme';
 
@@ -6,8 +6,7 @@ export default function GridStatusPanel({ node }) {
   const load = node.displayedLoad ?? node.currentLoad;
   const pct = Math.min((load / node.capacity) * 100, 120);
   const statusColor = STATUS_COLORS[node.status] || STATUS_COLORS.normal;
-
-  const isSpoofed = node.attackType === 'spoofing' && node.attackActive;
+  const trust = node.trust ?? 100;
 
   // SVG arc for radial gauge
   const radius = 52;
@@ -15,6 +14,9 @@ export default function GridStatusPanel({ node }) {
   const dashoffset = circumference - (circumference * Math.min(pct, 100)) / 100;
 
   const gaugeColor = pct < 70 ? '#10b981' : pct < 90 ? '#f59e0b' : '#ef4444';
+
+  // Trust bar color
+  const trustColor = trust > 80 ? '#10b981' : trust > 50 ? '#f59e0b' : trust > 30 ? '#f97316' : '#ef4444';
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -51,7 +53,7 @@ export default function GridStatusPanel({ node }) {
         </svg>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 13/*, fontWeight: 600*/ }}>
+      <div style={{ textAlign: 'center', marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 13 }}>
         <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{load.toFixed(1)} MW</span>
         <span style={{ color: 'var(--text-muted)' }}> / {node.capacity} MW</span>
       </div>
@@ -62,17 +64,28 @@ export default function GridStatusPanel({ node }) {
         </span>
       </div>
 
-      {isSpoofed && (
-        <div style={{ marginTop: 8, fontSize: 11, textAlign: 'center' }}>
-          <div style={{ color: '#eab308', fontWeight: 600 }}>⚠ SPOOFED</div>
-          <div style={{ color: 'var(--text-muted)' }}>
-            Displayed: {node.displayedLoad?.toFixed(1)} MW
-          </div>
-          <div style={{ color: 'var(--text-muted)' }}>
-            True: {node.trueLoad?.toFixed(1)} MW
-          </div>
+      {/* Trust Score Bar */}
+      <div style={{ width: '100%', marginTop: 10 }}>
+        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+          <span>Trust Score</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: trustColor, fontWeight: 600 }}>{trust.toFixed(0)}%</span>
         </div>
-      )}
+        <div style={{
+          width: '100%',
+          height: 6,
+          background: 'rgba(255,255,255,0.06)',
+          borderRadius: 3,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${Math.min(Math.max(trust, 0), 100)}%`,
+            height: '100%',
+            background: `linear-gradient(90deg, ${trustColor}, ${trustColor}88)`,
+            borderRadius: 3,
+            transition: 'width 0.3s ease',
+          }} />
+        </div>
+      </div>
     </div>
   );
 }

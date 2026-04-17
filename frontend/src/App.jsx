@@ -1,7 +1,7 @@
 // App.jsx — Root Layout
 import { useEffect } from 'react';
 import useGridStore from './store/useGridStore';
-import './socket/socketClient'; // Initialize socket connection on import
+import './socket/socketClient'; // Initialize WebSocket connection on import
 import SceneCanvas from './components/three/SceneCanvas';
 import NetworkGraph from './components/graph/NetworkGraph';
 import ScadaDashboard from './components/scada/ScadaDashboard';

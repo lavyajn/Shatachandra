@@ -1,9 +1,10 @@
-// CommunicationPanel.jsx — Packet rate visualization
+// CommunicationPanel.jsx — Trust score visualization + packet estimate
 export default function CommunicationPanel({ node }) {
+  const trust = node.trust ?? 100;
   const total = node.packetRate + node.maliciousPacketRate;
-  const normalPct = total > 0 ? (node.packetRate / (total + node.maliciousPacketRate)) * 100 : 100;
-  const maliciousPct = total > 0 ? (node.maliciousPacketRate / (total + node.maliciousPacketRate)) * 100 : 0;
-  const isDDoS = node.attackType === 'ddos' && node.attackActive;
+  const normalPct = total > 0 ? (node.packetRate / total) * 100 : 100;
+  const maliciousPct = total > 0 ? (node.maliciousPacketRate / total) * 100 : 0;
+  const isUnderThreat = trust < 50;
 
   return (
     <div className="panel">
@@ -14,13 +15,13 @@ export default function CommunicationPanel({ node }) {
           fontSize: 28,
           fontWeight: 800,
           fontFamily: 'var(--font-mono)',
-          color: isDDoS ? 'var(--status-compromised)' : 'var(--text-primary)',
+          color: isUnderThreat ? 'var(--status-compromised)' : 'var(--text-primary)',
           transition: 'color 0.3s'
         }}>
-          {(node.packetRate + node.maliciousPacketRate).toLocaleString()}
+          {total.toLocaleString()}
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          packets/sec
+          packets/sec (est.)
         </div>
       </div>
 
@@ -53,12 +54,32 @@ export default function CommunicationPanel({ node }) {
               style={{
                 width: `${Math.min(maliciousPct, 100)}%`,
                 background: 'linear-gradient(90deg, #ef4444, #f97316)',
-                transition: isDDoS ? 'width 0.15s ease' : 'width 0.3s ease',
-                animation: isDDoS ? 'alertPulse 0.5s infinite' : 'none'
+                transition: isUnderThreat ? 'width 0.15s ease' : 'width 0.3s ease',
+                animation: isUnderThreat ? 'alertPulse 0.5s infinite' : 'none'
               }}
             />
           </div>
         </div>
+      </div>
+
+      {/* Trust indicator */}
+      <div style={{
+        marginTop: 10,
+        padding: '6px 10px',
+        background: 'rgba(255,255,255,0.03)',
+        borderRadius: 6,
+        display: 'flex',
+        justifyContent: 'space-between',
+        fontSize: 11,
+      }}>
+        <span style={{ color: 'var(--text-muted)' }}>Trust Score</span>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 700,
+          color: trust > 80 ? '#10b981' : trust > 50 ? '#f59e0b' : '#ef4444',
+        }}>
+          {trust.toFixed(1)}%
+        </span>
       </div>
     </div>
   );

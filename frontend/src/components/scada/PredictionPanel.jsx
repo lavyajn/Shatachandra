@@ -39,7 +39,7 @@ export default function PredictionPanel({ node }) {
           <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-muted)' }}> MW</span>
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Predicted Load (t+2.5s)
+          Predicted Load (t+0.5s)
         </div>
       </div>
 

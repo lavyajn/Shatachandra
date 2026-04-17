@@ -1,7 +1,8 @@
-// SystemResponsePanel.jsx — Active defense responses
-import { emitNodeIsolate, emitNodeRestore } from '../../socket/socketClient';
+// SystemResponsePanel.jsx — Defense responses (backend2-controlled, read-only)
+import useGridStore from '../../store/useGridStore';
 
 export default function SystemResponsePanel({ node }) {
+  const decisionLog = useGridStore((s) => s.decisionLog);
   const actions = node.responseActions || [];
 
   const responses = [
@@ -9,8 +10,6 @@ export default function SystemResponsePanel({ node }) {
     { key: 'load_redistribution', label: 'Load Redistribution', icon: '⚡' },
     { key: 'isolation', label: 'Node Isolation', icon: '🔒' },
   ];
-
-  const isIsolated = node.status === 'isolated';
 
   return (
     <div className="panel">
@@ -47,24 +46,28 @@ export default function SystemResponsePanel({ node }) {
         })}
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        {isIsolated ? (
-          <button
-            className="btn btn-success"
-            style={{ width: '100%', fontSize: 12 }}
-            onClick={() => emitNodeRestore(node.id)}
-          >
-            🔓 Restore Node
-          </button>
-        ) : (
-          <button
-            className="btn btn-danger"
-            style={{ width: '100%', fontSize: 12 }}
-            onClick={() => emitNodeIsolate(node.id)}
-          >
-            🔒 Isolate Node
-          </button>
-        )}
+      {/* Defense engine status */}
+      <div style={{
+        marginTop: 12,
+        padding: '8px 10px',
+        background: 'rgba(255,255,255,0.03)',
+        borderRadius: 6,
+        fontSize: 11,
+        color: 'var(--text-secondary)',
+        lineHeight: 1.5,
+      }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+          C++ Defense Engine
+        </div>
+        <div style={{ fontFamily: 'var(--font-mono)', color: '#4ade80', fontSize: 10 }}>
+          {node.status === 'isolated'
+            ? '→ Node isolated by automated defense'
+            : node.status === 'compromised'
+            ? '→ Defense engine evaluating response...'
+            : node.status === 'high'
+            ? '→ Monitoring anomaly — trust declining'
+            : '→ All systems nominal'}
+        </div>
       </div>
     </div>
   );

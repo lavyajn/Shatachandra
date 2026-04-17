@@ -1,31 +1,34 @@
-// PacketGraph.jsx — Recharts stacked area chart for packet rates
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip } from 'recharts';
+// PacketGraph.jsx — Trust score history + packet rate area chart
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, Line, ComposedChart } from 'recharts';
 
 export default function PacketGraph({ node }) {
+  const trustHistory = node.history?.trust || [];
   const packetHistory = node.history?.packetRate || [];
   const maliciousHistory = node.history?.maliciousRate || [];
 
   const data = packetHistory.map((val, i) => ({
-    time: -(packetHistory.length - 1 - i) * 0.5,
+    time: -(packetHistory.length - 1 - i) * 0.1, // backend2 ticks at 100ms
     normal: val,
     malicious: maliciousHistory[i] || 0,
+    trust: trustHistory[i] ?? 100,
   }));
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="panel-title">📶 Packet Traffic</div>
+      <div className="panel-title">📶 Traffic & Trust</div>
       <div style={{ flex: 1, minHeight: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+          <ComposedChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis
               dataKey="time"
               stroke="#64748b"
               fontSize={9}
-              tickFormatter={(v) => `${v}s`}
+              tickFormatter={(v) => `${v.toFixed(1)}s`}
               interval="preserveStartEnd"
             />
-            <YAxis stroke="#64748b" fontSize={9} />
+            <YAxis yAxisId="left" stroke="#64748b" fontSize={9} />
+            <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={9} domain={[0, 100]} />
             <Tooltip
               contentStyle={{
                 background: '#111827',
@@ -37,6 +40,7 @@ export default function PacketGraph({ node }) {
               labelFormatter={(l) => `${l}s`}
             />
             <Area
+              yAxisId="left"
               type="monotone"
               dataKey="normal"
               stackId="1"
@@ -46,6 +50,7 @@ export default function PacketGraph({ node }) {
               name="Normal"
             />
             <Area
+              yAxisId="left"
               type="monotone"
               dataKey="malicious"
               stackId="1"
@@ -54,7 +59,17 @@ export default function PacketGraph({ node }) {
               isAnimationActive={false}
               name="Malicious"
             />
-          </AreaChart>
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="trust"
+              stroke="#4ade80"
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+              name="Trust %"
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

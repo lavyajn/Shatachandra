@@ -1,7 +1,25 @@
-// DecisionBox.jsx — AI Decision Engine display (USP)
+// DecisionBox.jsx — C++ Defense Engine decision display
+import useGridStore from '../../store/useGridStore';
+
 export default function DecisionBox({ node }) {
-  const decisions = node.decisionLog || [];
-  const recentDecisions = decisions.slice(-3);
+  const decisionLog = useGridStore((s) => s.decisionLog);
+  const perNodeDecisions = node.decisionLog || [];
+
+  // Parse global decision log into display entries
+  const displayEntries = [];
+
+  if (perNodeDecisions.length > 0) {
+    displayEntries.push(...perNodeDecisions.slice(-3));
+  }
+
+  // If global decision log mentions this node, include it
+  const nodeIdNum = parseInt(node.id, 10);
+  if (decisionLog && decisionLog.includes(`Node ${nodeIdNum}`)) {
+    displayEntries.unshift(`→ ${decisionLog}`);
+  }
+
+  // Trim to last 4 entries
+  const recentDecisions = displayEntries.slice(-4);
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column' }}>

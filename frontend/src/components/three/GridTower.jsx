@@ -13,7 +13,7 @@ function TowerModel({ node, position }) {
   let loadError = false;
 
   try {
-    const gltf = useGLTF('/models/radio_tower.glb');
+    const gltf = useGLTF('/models/power_transmission_tower_free.glb');
     scene = gltf.scene;
   } catch (e) {
     loadError = true;

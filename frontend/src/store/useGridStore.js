@@ -1,4 +1,4 @@
-// useGridStore.js — Zustand Global Store
+// useGridStore.js — Zustand Global Store (backend2 compatible)
 import { create } from 'zustand';
 
 const useGridStore = create((set, get) => ({
@@ -8,15 +8,7 @@ const useGridStore = create((set, get) => ({
   selectedNodeId: null,
   viewMode: '3d',
   connectionStatus: 'connecting',
-
-  // Derived
-  get activeAttacks() {
-    const map = {};
-    get().nodes.forEach(n => {
-      if (n.attackActive) map[n.id] = n.attackType;
-    });
-    return map;
-  },
+  decisionLog: '',  // Global decision log from C++ engine
 
   // Actions
   setNodes: (nodes) => set({ nodes }),
@@ -38,11 +30,14 @@ const useGridStore = create((set, get) => ({
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 
+  setDecisionLog: (log) => set({ decisionLog: log }),
+
   resetState: () => set({
     nodes: [],
     edges: [],
     logs: [],
     selectedNodeId: null,
+    decisionLog: '',
   }),
 
   // Update full state from server
