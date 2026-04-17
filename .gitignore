@@ -1,0 +1,13 @@
+# Binaries and object files
+*.o
+*.out
+build/
+
+# Node modules
+node_modules/
+
+# OS generated files
+.DS_Store
+.cache/
+
+.env
