@@ -13,7 +13,6 @@ export default function Skybox() {
         fade
         speed={0.5}
       />
-      <fog attach="fog" args={['#0a0e1a', 20, 60]} />
     </>
   );
 }

@@ -13,13 +13,13 @@ export default function GroundPlane() {
     const ctx = canvas.getContext('2d');
 
     // Dark background
-    ctx.fillStyle = '#080c14';
+    ctx.fillStyle = '#0000007c';
     ctx.fillRect(0, 0, size, size);
 
     // Grid lines
     const gridSize = 32;
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.5)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#11ff00';
+    ctx.lineWidth = 0.1;
     for (let i = 0; i <= size; i += gridSize) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
@@ -32,9 +32,9 @@ export default function GroundPlane() {
     }
 
     // Accent lines every 4 grid cells
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.12)';
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i <= size; i += gridSize * 4) {
+    ctx.strokeStyle = 'rgb(0, 255, 0)';
+    ctx.lineWidth = 0.3;
+    for (let i = 0; i <= size; i += gridSize * 2) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, size);

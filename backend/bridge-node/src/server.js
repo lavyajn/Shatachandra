@@ -5,32 +5,41 @@ const { injectAttack } = require('./engine/attackEngine');
 const { evaluateAndDefend } = require('./engine/predictionEngine');
 const { physicsTick } = require('./engine/simulationEngine');
 
+// 1. Centralized Engine State
 const state = {
   isAttackActive: false,
   activeScenario: null,
-  targetNodeId: null
+  targetNodeId: null,
+  isDefenseActive: true // The toggle for "Chaos Mode"
 };
 
 async function main() {
+  // Setup ZMQ Publisher (Telemetry Out)
   const publisher = new zmq.Publisher();
   await publisher.bind('tcp://127.0.0.1:5555');
 
-  let nodes = createNodes(); 
-  let currentDecision = { text: 'System Stable. Monitoring packet flow.' };
-
+  // Setup ZMQ Subscriber (Commands In)
   const sock = new zmq.Subscriber();
   sock.connect("tcp://127.0.0.1:5556");
   sock.subscribe("");
 
-  console.log("🔵 Prediction Core listening on tcp://127.0.0.1:5556");
+  let nodes = createNodes(); 
+  let currentDecision = { text: 'System Stable. Monitoring packet flow.' };
 
-  // 1. START THE TICKER FIRST
-  // This registers the background loop so it runs every 100ms
+  console.log("🔵 Sanrakshan Prediction Core: ONLINE");
+  console.log("📡 Listening for Commands on tcp://127.0.0.1:5556");
+
+  // 2. THE TICKER (Background Physics & Logic Loop)
   setInterval(() => {
+    // Pipeline Execution
     injectAttack(nodes, state);
-    evaluateAndDefend(nodes, currentDecision);
+    
+    // Pass the defense flag to determine if isolation should occur
+    evaluateAndDefend(nodes, currentDecision, state.isDefenseActive); 
+    
     physicsTick(nodes);
 
+    // Broadcast Telemetry to the Bridge
     const payload = {
       nodes: nodes.map(n => ({
         id: String(n.id),
@@ -38,34 +47,52 @@ async function main() {
         capacity: n.max_capacity,
         trust: n.trust_score,
         status: n.status,
-        position3D: n.position3D // CRITICAL: Send coordinates to React
+        position3D: n.position3D 
       })),
       decision_log: currentDecision.text
     };
     
     publisher.send(JSON.stringify(payload)).catch(() => {});
 
-    process.stdout.write(`\r[LIVE] Attacking: ${state.isAttackActive ? state.activeScenario : 'NONE'} | Log: ${currentDecision.text.substring(0, 40)}...`);
+    // CLI Status Monitor
+    const mode = state.isDefenseActive ? "PROTECTED" : "UNPROTECTED";
+    process.stdout.write(`\r[${mode}] Attacking: ${state.isAttackActive ? state.activeScenario : 'NONE'} | Node: ${state.targetNodeId ?? 'N/A'}`);
   }, 100);
 
-  // 2. START THE BLOCKING LISTENER LAST
-  // Now it's safe to block the main thread waiting for ZMQ messages
+  // 3. THE COMMAND LISTENER (Blocking Loop)
   for await (const [msg] of sock) {
-    const cmd = msg.toString();
-    if (cmd === "STOP") {
+    const cmd = msg.toString().toUpperCase();
+
+    // Defense Toggles
+    if (cmd === "DEFENSE_OFF") {
+      state.isDefenseActive = false;
+      console.log("\n⚠️ ALERT: AI Defense Engine Disabled by User.");
+    } 
+    else if (cmd === "DEFENSE_ON") {
+      state.isDefenseActive = true;
+      console.log("\n🛡️ INFO: AI Defense Engine Re-enabled.");
+    } 
+    
+    // System Control
+    else if (cmd === "STOP") {
       state.isAttackActive = false;
       state.targetNodeId = null;
       state.activeScenario = null;
       
+      // Hard Reset: Rebuild nodes and restore edges
       nodes = createNodes(); 
       edges.forEach(e => e.is_active = true); 
       currentDecision.text = 'System Reset. Restoring normal flow.';
-      
-    } else if (cmd.startsWith("START_")) {
+      console.log("\n🔄 System: Hard Reset Performed.");
+    } 
+    
+    // Attack Initiation
+    else if (cmd.startsWith("START_")) {
       const parts = cmd.split("_");
       state.activeScenario = parts[1];
       state.targetNodeId = parseInt(parts[2]);
       state.isAttackActive = true;
+      console.log(`\n⚔️ Attack Initiated: ${state.activeScenario} on Node ${state.targetNodeId}`);
     }
   }
 }
