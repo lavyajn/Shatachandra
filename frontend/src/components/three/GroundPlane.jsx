@@ -1,4 +1,4 @@
-// GroundPlane.jsx — Map plane with grid texture
+// GroundPlane.jsx — Subtle grid plane at Y=0 for spatial grounding
 import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 
@@ -13,13 +13,13 @@ export default function GroundPlane() {
     const ctx = canvas.getContext('2d');
 
     // Dark background
-    ctx.fillStyle = '#0000007c';
+    ctx.fillStyle = '#060912';
     ctx.fillRect(0, 0, size, size);
 
-    // Grid lines
+    // Subtle grid lines — low opacity, muted color
     const gridSize = 32;
-    ctx.strokeStyle = '#11ff00';
-    ctx.lineWidth = 0.1;
+    ctx.strokeStyle = 'rgba(0, 255, 204, 0.06)';
+    ctx.lineWidth = 0.5;
     for (let i = 0; i <= size; i += gridSize) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
@@ -31,10 +31,10 @@ export default function GroundPlane() {
       ctx.stroke();
     }
 
-    // Accent lines every 4 grid cells
-    ctx.strokeStyle = 'rgb(0, 255, 0)';
-    ctx.lineWidth = 0.3;
-    for (let i = 0; i <= size; i += gridSize * 2) {
+    // Slightly brighter accent lines every 4 cells
+    ctx.strokeStyle = 'rgba(0, 255, 204, 0.12)';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i <= size; i += gridSize * 4) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, size);
@@ -63,9 +63,9 @@ export default function GroundPlane() {
       <meshStandardMaterial
         map={texture}
         transparent
-        opacity={0.9}
-        roughness={0.9}
-        metalness={0.1}
+        opacity={0.5}
+        roughness={0.95}
+        metalness={0.05}
       />
     </mesh>
   );

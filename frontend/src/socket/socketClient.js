@@ -1,38 +1,39 @@
 // socketClient.js — WebSocket Client for backend2 (C++/ZMQ bridge)
 import useGridStore from '../store/useGridStore';
+import { speakDefenceAction } from '../hooks/useSpeech';
 
 const WS_URL = 'ws://localhost:8080';
 
 // ============ STATIC NODE CONFIG ============
-// backend2 uses numeric IDs 0-4. We define labels, positions, and base data here.
+// backend2 uses numeric IDs 0-4. Zero-indexed serial naming convention.
 
 const NODE_CONFIG = {
   '0': {
-    label: 'Main Generator',
+    label: 'Node 0',
     position3D: { x: -7, y: 0, z: -7 },
     baseLoad: 20,
     basePacketRate: 120,
   },
   '1': {
-    label: 'Substation Alpha',
+    label: 'Node 1',
     position3D: { x: 8, y: 0, z: -6 },
     baseLoad: 30,
     basePacketRate: 150,
   },
   '2': {
-    label: 'City Hub',
+    label: 'Node 2',
     position3D: { x: 10, y: 0, z: 2 },
     baseLoad: 40,
     basePacketRate: 100,
   },
   '3': {
-    label: 'Edge Router',
+    label: 'Node 3',
     position3D: { x: 3, y: 0, z: 9 },
     baseLoad: 15,
     basePacketRate: 130,
   },
   '4': {
-    label: 'Industrial Hub',
+    label: 'Node 4',
     position3D: { x: -8, y: 0, z: 6 },
     baseLoad: 35,
     basePacketRate: 110,
@@ -63,14 +64,20 @@ const STATUS_MAP = {
   3: 'isolated',
 };
 
+// ============ ATTACK TYPE LABELS FOR DEFENCE LOG ============
+
+const ATTACK_ACTION_LABELS = {
+  ddos: 'SYN flood',
+  fdi: 'false data injection',
+  spoofing: 'identity spoof',
+};
+
 // ============ CLIENT-SIDE STATE ============
 
 const HISTORY_MAX = 60;
 
 // Per-node history storage (persists across ticks)
 const nodeHistories = {};
-// Per-node trust history
-const trustHistories = {};
 // Previous statuses for change detection
 const prevStatuses = {};
 // Track when nodes entered non-normal status (for attack duration)
@@ -120,9 +127,12 @@ function runClientPrediction(node, history) {
 
 function transformBackend2Data(rawData) {
   const { nodes: rawNodes, decision_log } = rawData;
+  const isDefenseActive = useGridStore.getState().isDefenseActive;
 
   // Collect status changes for log generation
   const statusChanges = [];
+  // Collect defence actions for voice narration
+  const defenceActions = [];
 
   // Transform nodes
   const nodes = rawNodes.map(rawNode => {
@@ -134,25 +144,45 @@ function transformBackend2Data(rawData) {
       basePacketRate: 100,
     };
 
-    const status = STATUS_MAP[rawNode.status] ?? 'normal';
+    const rawStatus = STATUS_MAP[rawNode.status] ?? 'normal';
     const currentLoad = rawNode.load;
     const capacity = rawNode.capacity;
     const trust = rawNode.trust;
 
-    // Detect attack state from status
-    const isUnderAttack = status === 'high' || status === 'compromised';
-    const prevStatus = prevStatuses[id];
+    // Defence engine intercept logic
+    let status = rawStatus;
+    const isUnderAttack = rawStatus === 'high' || rawStatus === 'compromised';
 
-    // Track attack start time
+    if (isDefenseActive && isUnderAttack) {
+      // Defence ON: intercept attacks — keep node visually SECURE
+      status = 'normal';
+
+      // Determine what kind of attack was blocked
+      const loadRatio = currentLoad / capacity;
+      let attackType = 'spoofing';
+      if (loadRatio > 0.9) attackType = 'ddos';
+      else if (trust < 50) attackType = 'fdi';
+
+      const attackLabel = ATTACK_ACTION_LABELS[attackType] || 'anomaly';
+
+      // Generate defence action labels
+      if (rawStatus === 'compromised') {
+        const actionMsg = `Blocked ${attackLabel} on Node ${id}`;
+        defenceActions.push(actionMsg);
+      } else if (rawStatus === 'high') {
+        const actionMsg = `Rate-limited Node ${id} ingress`;
+        defenceActions.push(actionMsg);
+      }
+    }
+
+    // Track attack start time (only when defence is OFF or for raw tracking)
     if (isUnderAttack && !attackStartTimes[id]) {
       attackStartTimes[id] = new Date().toISOString();
     } else if (!isUnderAttack && attackStartTimes[id]) {
       attackStartTimes[id] = null;
     }
 
-    // Determine attack type heuristic:
-    // - If load is spiking dramatically → likely DDoS / FDI
-    // - If trust is dropping → anomaly-based attack
+    // Determine attack type heuristic
     let attackType = null;
     if (isUnderAttack) {
       const loadRatio = currentLoad / capacity;
@@ -179,14 +209,14 @@ function transformBackend2Data(rawData) {
 
     // Detect status change before updating
     if (prevStatuses[id] !== undefined && prevStatuses[id] !== status) {
-      statusChanges.push({ id, prevStatus: prevStatuses[id], newStatus: status, trust });
+      statusChanges.push({ id, prevStatus: prevStatuses[id], newStatus: status, rawStatus, trust });
     }
     prevStatuses[id] = status;
 
     // Run client-side prediction
     const node = {
       id,
-      label: config.label,
+      label: `Node ${id}`,
       position3D: config.position3D,
       position2D: project3DTo2D(config.position3D),
       capacity,
@@ -195,11 +225,13 @@ function transformBackend2Data(rawData) {
       displayedLoad: currentLoad,
       trueLoad: currentLoad,
       status,
+      rawStatus, // original status from backend before defence intercept
       trust,
       packetRate: normalPR,
       basePacketRate: basePR,
       maliciousPacketRate: maliciousEstimate,
-      attackActive: isUnderAttack,
+      attackActive: isUnderAttack, // true if backend reports attack, regardless of defence
+      attackIntercepted: isDefenseActive && isUnderAttack, // true if defence blocked it
       attackType,
       attackStartTime: attackStartTimes[id] || null,
       predictedLoad: null,
@@ -228,7 +260,6 @@ function transformBackend2Data(rawData) {
 
     // Decision log from global decision_log
     if (decision_log && decision_log.length > 0) {
-      // Parse the decision_log for entries mentioning this node
       const nodeIdNum = parseInt(id, 10);
       if (decision_log.includes(`Node ${nodeIdNum}`)) {
         node.decisionLog = decision_log.split('[').filter(s => s.length > 0).map(s => '→ [' + s);
@@ -255,7 +286,7 @@ function transformBackend2Data(rawData) {
     return { ...edge, currentFlow, stressed };
   });
 
-  return { nodes, edges, decisionLog: decision_log || '', statusChanges };
+  return { nodes, edges, decisionLog: decision_log || '', statusChanges, defenceActions };
 }
 
 // ============ WEBSOCKET CONNECTION ============
@@ -287,7 +318,7 @@ function connect() {
 
     useGridStore.getState().addLog({
       timestamp: new Date().toISOString(),
-      message: '🟢 Connected to C++ Simulation Engine',
+      message: 'Connected to C++ Simulation Engine',
       level: 'info',
     });
   };
@@ -295,7 +326,6 @@ function connect() {
   ws.onmessage = (event) => {
     try {
       const rawData = JSON.parse(event.data);
-      console.log("Telemetry received:", rawData);
       const transformed = transformBackend2Data(rawData);
 
       useGridStore.getState().updateFromServer({
@@ -307,43 +337,50 @@ function connect() {
       useGridStore.getState().setDecisionLog(transformed.decisionLog);
 
       // Generate logs from status changes (collected during transform)
+      const isDefenseActive = useGridStore.getState().isDefenseActive;
+
       for (const change of transformed.statusChanges) {
-        if (change.newStatus === 'high') {
-          useGridStore.getState().addLog({
-            timestamp: new Date().toISOString(),
-            message: `⚠ Node ${change.id} trust declining (${change.trust.toFixed(0)}%) — Status: WARNING`,
-            level: 'warn',
-          });
-        } else if (change.newStatus === 'compromised') {
-          useGridStore.getState().addLog({
-            timestamp: new Date().toISOString(),
-            message: `🔴 Node ${change.id} COMPROMISED — Trust: ${change.trust.toFixed(0)}% — Defense Engine Active`,
-            level: 'error',
-          });
-        } else if (change.newStatus === 'isolated') {
-          useGridStore.getState().addLog({
-            timestamp: new Date().toISOString(),
-            message: `🔒 Node ${change.id} ISOLATED by Defense Engine`,
-            level: 'error',
-          });
-        } else if (change.newStatus === 'normal') {
-          useGridStore.getState().addLog({
-            timestamp: new Date().toISOString(),
-            message: `🟢 Node ${change.id} recovered — Trust restored`,
-            level: 'success',
-          });
+        if (!isDefenseActive) {
+          // Defence OFF: attacks propagate freely
+          if (change.rawStatus === 'high' || change.newStatus === 'high') {
+            useGridStore.getState().addLog({
+              timestamp: new Date().toISOString(),
+              message: `Node ${change.id} trust declining (${change.trust.toFixed(0)}%) — Status: WARNING`,
+              level: 'warning',
+            });
+          } else if (change.rawStatus === 'compromised' || change.newStatus === 'compromised') {
+            useGridStore.getState().addLog({
+              timestamp: new Date().toISOString(),
+              message: `Node ${change.id} BREACHED — Trust: ${change.trust.toFixed(0)}%`,
+              level: 'critical',
+            });
+          } else if (change.newStatus === 'isolated') {
+            useGridStore.getState().addLog({
+              timestamp: new Date().toISOString(),
+              message: `Node ${change.id} ISOLATED`,
+              level: 'critical',
+            });
+          } else if (change.newStatus === 'normal' && change.prevStatus !== 'normal') {
+            useGridStore.getState().addLog({
+              timestamp: new Date().toISOString(),
+              message: `Node ${change.id} recovered — Trust restored`,
+              level: 'info',
+            });
+          }
         }
       }
 
-      // Also log decision changes
-      if (transformed.decisionLog && transformed.decisionLog.length > 10) {
-        const prevDecision = useGridStore.getState().decisionLog;
-        if (prevDecision !== transformed.decisionLog) {
+      // Defence ON: log and speak defence actions
+      if (isDefenseActive && transformed.defenceActions.length > 0) {
+        for (const action of transformed.defenceActions) {
           useGridStore.getState().addLog({
             timestamp: new Date().toISOString(),
-            message: `🧠 ${transformed.decisionLog}`,
-            level: 'warn',
+            message: action,
+            level: 'info',
+            isDefenceAction: true,
           });
+          // Speak the defence action
+          speakDefenceAction(action);
         }
       }
 
@@ -375,8 +412,6 @@ function scheduleReconnect() {
   }, delay);
 }
 
-// ... add these functions to your existing socketClient.js ...
-
 export function triggerScenario(type) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     const payload = JSON.stringify({
@@ -388,8 +423,6 @@ export function triggerScenario(type) {
     console.log(`[WS] Triggered Scenario: ${type}`);
   }
 }
-
-
 
 export function stopScenario() {
   if (ws && ws.readyState === WebSocket.OPEN) {

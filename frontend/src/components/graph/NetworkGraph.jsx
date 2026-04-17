@@ -8,17 +8,17 @@ export default function NetworkGraph() {
   const graphRef = useRef();
   const nodes = useGridStore((s) => s.nodes);
   const edges = useGridStore((s) => s.edges);
-  const selectNode = useGridStore((s) => s.selectNode);
+  const navigateToScada = useGridStore((s) => s.navigateToScada);
 
   const graphData = useMemo(() => {
     const gNodes = nodes.map(n => ({
       id: n.id,
-      label: n.id,
-      fullLabel: n.label,
+      label: `Node ${n.id}`,
       load: n.currentLoad,
       capacity: n.capacity,
       status: n.status,
       attackActive: n.attackActive,
+      attackIntercepted: n.attackIntercepted,
       attackType: n.attackType,
       predictedRisk: n.predictedRisk,
       packetRate: n.packetRate,
@@ -48,7 +48,7 @@ export default function NetworkGraph() {
     const radius = 16;
 
     // Outer ring for attack or high risk
-    if (node.attackActive) {
+    if (node.attackActive && !node.attackIntercepted) {
       ctx.beginPath();
       ctx.arc(node.x, node.y, radius + 6, 0, 2 * Math.PI);
       ctx.strokeStyle = '#ef4444';
@@ -91,23 +91,20 @@ export default function NetworkGraph() {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Center text — node ID
-    ctx.font = 'bold 12px Inter, sans-serif';
+    // Center text — Node N label
+    ctx.font = '10px Michroma, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#e2e8f0';
-    ctx.fillText(node.id, node.x, node.y - 2);
+    ctx.fillText(`N${node.id}`, node.x, node.y - 2);
 
     // Load value below
-    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.font = '8px Michroma, monospace';
     ctx.fillStyle = '#94a3b8';
     ctx.fillText(`${node.load.toFixed(0)}MW`, node.x, node.y + 10);
 
-    // Packet rate
-    ctx.fillText(`${node.packetRate}/s`, node.x, node.y + 22);
-
     // Attack warning icon above
-    if (node.attackActive) {
+    if (node.attackActive && !node.attackIntercepted) {
       ctx.font = '14px sans-serif';
       ctx.fillText('⚠', node.x, node.y - radius - 10);
     }
@@ -142,11 +139,11 @@ export default function NetworkGraph() {
   }, []);
 
   const handleNodeClick = useCallback((node) => {
-    selectNode(node.id);
-  }, [selectNode]);
+    navigateToScada(node.id);
+  }, [navigateToScada]);
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0a0e1a' }}>
+    <div style={{ width: '100%', height: '100%', background: '#060912' }}>
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
@@ -158,7 +155,7 @@ export default function NetworkGraph() {
         d3AlphaDecay={0.05}
         d3VelocityDecay={0.4}
         cooldownTime={100}
-        backgroundColor="rgba(10,14,26,1)"
+        backgroundColor="rgba(6,9,18,1)"
         linkDirectionalParticles={0}
         nodePointerAreaPaint={(node, color, ctx) => {
           ctx.beginPath();

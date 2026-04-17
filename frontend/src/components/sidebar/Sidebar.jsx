@@ -1,23 +1,30 @@
+// Sidebar.jsx — Floating, draggable sidebar with attack injection + defence toggle
 import { useState } from 'react';
 import useGridStore from '../../store/useGridStore';
 import { sendCommand } from '../../socket/socketClient';
 import LogFeed from './LogFeed';
+import useDraggable from '../../hooks/useDraggable';
 
 export default function Sidebar() {
   const nodes = useGridStore((s) => s.nodes);
   const simStatus = useGridStore((s) => s.simStatus);
   const startSimulation = useGridStore((s) => s.startSimulation);
   const stopSimulation = useGridStore((s) => s.stopSimulation);
-  
-  // NEW: Defense State
+
   const isDefenseActive = useGridStore((s) => s.isDefenseActive);
   const toggleDefense = useGridStore((s) => s.toggleDefense);
 
   const [selectedAttack, setSelectedAttack] = useState('DDOS');
   const [targetNode, setTargetNode] = useState('0');
+  const [collapsed, setCollapsed] = useState(false);
+
+  const { position, handleMouseDown } = useDraggable({
+    x: window.innerWidth - 370,
+    y: 50,
+  });
 
   const handleStart = () => {
-    startSimulation(selectedAttack); 
+    startSimulation(selectedAttack);
     sendCommand('START_SCENARIO', selectedAttack, targetNode);
   };
 
@@ -26,58 +33,123 @@ export default function Sidebar() {
     sendCommand('STOP_ATTACK');
   };
 
-  // NEW: Toggle handler
   const handleDefenseToggle = () => {
     const nextState = !isDefenseActive;
     toggleDefense();
-    // Use your existing sendCommand utility
     sendCommand(nextState ? 'DEFENSE_ON' : 'DEFENSE_OFF');
   };
 
+  // Collapsed icon strip
+  if (collapsed) {
+    return (
+      <div
+        className="floating-panel collapsed"
+        style={{
+          left: position.x,
+          top: position.y,
+        }}
+      >
+        <div className="collapsed-strip">
+          <div
+            className="strip-icon"
+            onClick={() => setCollapsed(false)}
+            title="Expand Panel"
+            style={{ color: '#00ffcc' }}
+          >
+            ◀
+          </div>
+          <div className="strip-icon" title="Attack Injection" style={{ color: '#ef4444' }}>⚡</div>
+          <div
+            className="strip-icon"
+            title={isDefenseActive ? 'Defence: ON' : 'Defence: OFF'}
+            style={{ color: isDefenseActive ? '#00ffcc' : '#ef4444' }}
+          >
+            🛡
+          </div>
+          <div className="strip-icon" title="Telemetry" style={{ color: '#94a3b8' }}>📊</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="sidebar">
+    <div
+      className="floating-panel"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: '340px',
+        height: 'calc(100vh - 100px)',
+        maxHeight: 'calc(100vh - 100px)',
+      }}
+    >
+      {/* Drag Handle */}
+      <div className="drag-handle" onMouseDown={handleMouseDown}>
+        <span className="handle-title">Control Panel</span>
+        <div className="handle-actions">
+          <button
+            className="collapse-btn"
+            onClick={() => setCollapsed(true)}
+            title="Collapse"
+          >
+            ▶
+          </button>
+        </div>
+      </div>
+
       {/* 1. Attack Orchestrator */}
-      <div className="sidebar-section" style={{ background: 'rgba(239, 68, 68, 0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div className="sidebar-section-title">
-          <span>⚔️ Attack Orchestrator</span>
-          {simStatus === 'RUNNING' && <span className="status-badge compromised" style={{ fontSize: 9 }}>ACTIVE</span>}
+      <div style={{
+        padding: '16px',
+        background: 'rgba(239, 68, 68, 0.04)',
+        borderBottom: '1px solid rgba(239, 68, 68, 0.2)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#ff3333', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+          <span>Attack Injection</span>
+          {simStatus === 'RUNNING' && <span style={{ color: '#ff3333', animation: 'blink 1.5s infinite' }}>ACTIVE</span>}
         </div>
 
         {simStatus === 'IDLE' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <select className="btn" value={selectedAttack} onChange={(e) => setSelectedAttack(e.target.value)}>
-              <option value="DDOS">DDoS Flood</option>
+            <select
+              value={selectedAttack}
+              onChange={(e) => setSelectedAttack(e.target.value)}
+              style={{ width: '100%', padding: '7px', background: 'rgba(0,0,0,0.5)', color: '#ff3333', border: '1px solid rgba(239, 68, 68, 0.3)', outline: 'none', borderRadius: '4px', fontSize: '10px' }}
+            >
+              <option value="DDOS">Volumetric DDoS</option>
               <option value="SPOOFING">Identity Spoofing</option>
               <option value="FDI">False Data Injection</option>
             </select>
-            <select className="btn" value={targetNode} onChange={(e) => setTargetNode(e.target.value)}>
-              {nodes.map(n => <option key={n.id} value={n.id}>Node {n.id}</option>)}
+            <select
+              value={targetNode}
+              onChange={(e) => setTargetNode(e.target.value)}
+              style={{ width: '100%', padding: '7px', background: 'rgba(0,0,0,0.5)', color: '#ff3333', border: '1px solid rgba(239, 68, 68, 0.3)', outline: 'none', borderRadius: '4px', fontSize: '10px' }}
+            >
+              {nodes.map(n => <option key={n.id} value={n.id}>Target: Node {n.id}</option>)}
             </select>
-            <button className="btn btn-danger" onClick={handleStart}>🚀 INITIATE ATTACK</button>
+            <button
+              onClick={handleStart}
+              style={{ width: '100%', padding: '9px', background: '#ff3333', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '10px', borderRadius: '4px' }}
+            >
+              Execute Attack
+            </button>
           </div>
         ) : (
-          <button className="btn btn-warning" onClick={handleStop}>⏹ TERMINATE ATTACK</button>
+          <button
+            onClick={handleStop}
+            style={{ width: '100%', padding: '9px', background: 'transparent', color: '#ff3333', border: '1px solid #ff3333', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '10px', borderRadius: '4px' }}
+          >
+            Terminate Sequence
+          </button>
         )}
       </div>
 
-      {/* 2. NEW: Defense Toggle Switch */}
-      <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <button 
+      {/* 2. Defence Toggle — clearly labelled ON/OFF */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0, 255, 204, 0.15)' }}>
+        <button
+          className={`defence-toggle ${isDefenseActive ? 'on' : 'off'}`}
           onClick={handleDefenseToggle}
-          style={{
-            width: '100%',
-            padding: '8px',
-            borderRadius: '4px',
-            border: `1px solid ${isDefenseActive ? '#10b981' : '#ef4444'}`,
-            background: isDefenseActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            color: isDefenseActive ? '#10b981' : '#ef4444',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            transition: 'all 0.3s'
-          }}
         >
-          {isDefenseActive ? '🛡️ DEFENSE ENGINE: ACTIVE' : '⚠️ DEFENSE ENGINE: DISABLED'}
+          {isDefenseActive ? 'Defence: ON' : 'Defence: OFF'}
         </button>
       </div>
 

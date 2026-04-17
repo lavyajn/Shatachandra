@@ -5,7 +5,6 @@ import useGridStore from '../../store/useGridStore';
 export default function GlobalAlertStrip() {
   const nodes = useGridStore((s) => s.nodes);
   const connectionStatus = useGridStore((s) => s.connectionStatus);
-  const decisionLog = useGridStore((s) => s.decisionLog);
   const [alerts, setAlerts] = useState([]);
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
   const prevNodeStates = useRef({});
@@ -15,7 +14,7 @@ export default function GlobalAlertStrip() {
 
     // Check connection status
     if (connectionStatus === 'disconnected') {
-      newAlerts.push({ type: 'attack', message: '🔌 Connection lost — Reconnecting...', priority: 10 });
+      newAlerts.push({ type: 'attack', message: 'Connection lost — Reconnecting...', priority: 10 });
     }
 
     // Check for nodes under threat (derived from status)
@@ -24,7 +23,7 @@ export default function GlobalAlertStrip() {
       const trustStr = (n.trust ?? 100).toFixed(0);
       newAlerts.push({
         type: 'attack',
-        message: `🚨 THREAT DETECTED: Node ${n.id} — Trust: ${trustStr}% — Status: ${n.status.toUpperCase()} — Defense Engine Active`,
+        message: `THREAT DETECTED: Node ${n.id} — Trust: ${trustStr}% — Status: ${n.status.toUpperCase()}`,
         priority: 8,
       });
     });
@@ -34,7 +33,7 @@ export default function GlobalAlertStrip() {
     isolatedNodes.forEach(n => {
       newAlerts.push({
         type: 'critical',
-        message: `🔒 Node ${n.id} ISOLATED by Defense Engine — Load redistributed`,
+        message: `Node ${n.id} ISOLATED — Load redistributed`,
         priority: 7,
       });
     });
@@ -44,19 +43,10 @@ export default function GlobalAlertStrip() {
     criticalNodes.forEach(n => {
       newAlerts.push({
         type: 'critical',
-        message: `⚠ CRITICAL PREDICTION: Node ${n.id} failure in ${n.timeToFailure?.toFixed(1) || '?'}s — Response Active`,
+        message: `CRITICAL PREDICTION: Node ${n.id} failure in ${n.timeToFailure?.toFixed(1) || '?'}s`,
         priority: 6,
       });
     });
-
-    // Decision log alert
-    if (decisionLog && decisionLog !== 'System Stable. Monitoring packet flow.' && decisionLog.length > 10) {
-      newAlerts.push({
-        type: 'critical',
-        message: `🧠 ${decisionLog}`,
-        priority: 5,
-      });
-    }
 
     // Check for recently recovered nodes
     nodes.forEach(n => {
@@ -64,7 +54,7 @@ export default function GlobalAlertStrip() {
       if (prevStatus === 'compromised' && n.status === 'normal') {
         newAlerts.push({
           type: 'recovered',
-          message: `✅ Node ${n.id} stabilized — Trust restored`,
+          message: `Node ${n.id} stabilized — Trust restored`,
           priority: 4,
         });
       }
@@ -82,11 +72,11 @@ export default function GlobalAlertStrip() {
     } else {
       setAlerts([{
         type: 'normal',
-        message: `● System Normal — ${nodes.filter(n => n.status !== 'isolated').length} Nodes Online`,
+        message: `System Normal — ${nodes.filter(n => n.status !== 'isolated').length} Nodes Online`,
         priority: 0,
       }]);
     }
-  }, [nodes, connectionStatus, decisionLog]);
+  }, [nodes, connectionStatus]);
 
   // Cycle alerts every 4 seconds
   useEffect(() => {
@@ -116,7 +106,7 @@ export default function GlobalAlertStrip() {
         <span style={{
           position: 'absolute',
           right: 12,
-          fontSize: 10,
+          fontSize: 9,
           color: 'inherit',
           opacity: 0.6,
         }}>

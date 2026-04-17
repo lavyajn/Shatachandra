@@ -18,7 +18,7 @@ export default function TowerTooltip({ node }) {
         style={{ borderColor: statusColor, border: `1px solid ${statusColor}`, boxShadow: `0 0 15px ${statusColor}33` }}
       >
         <div className="tt-title">
-          <span>⚡</span> {node.label}
+          <span>⚡</span> Node {node.id}
         </div>
 
         <div className="tt-row">
@@ -48,7 +48,9 @@ export default function TowerTooltip({ node }) {
         <div className="tt-row">
           <span>Attack</span>
           <span className="tt-value">
-            {node.attackActive ? ATTACK_LABELS[node.attackType] : 'None'}
+            {node.attackActive
+              ? (node.attackIntercepted ? `${ATTACK_LABELS[node.attackType]} (BLOCKED)` : ATTACK_LABELS[node.attackType])
+              : 'None'}
           </span>
         </div>
       </div>

@@ -4,7 +4,7 @@ import useGridStore from '../../store/useGridStore';
 export default function NodeSwitcher() {
   const nodes = useGridStore((s) => s.nodes);
   const selectedNodeId = useGridStore((s) => s.selectedNodeId);
-  const selectNode = useGridStore((s) => s.selectNode);
+  const navigateToScada = useGridStore((s) => s.navigateToScada);
 
   return (
     <div className="node-switcher">
@@ -12,8 +12,8 @@ export default function NodeSwitcher() {
         <button
           key={n.id}
           className={`node-btn ${n.id === selectedNodeId ? 'active' : ''}`}
-          onClick={() => selectNode(n.id)}
-          title={n.label}
+          onClick={() => navigateToScada(n.id)}
+          title={`Node ${n.id}`}
         >
           {n.id}
         </button>

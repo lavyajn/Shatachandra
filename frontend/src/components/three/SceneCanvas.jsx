@@ -5,19 +5,6 @@ import useGridStore from '../../store/useGridStore';
 import GridTower from './GridTower';
 import TransmissionLine from './TransmissionLine';
 import GroundPlane from './GroundPlane';
-import Skybox from './Skybox';
-
-
-
-export const getStatusColor = (status) => {
-  switch (Number(status)) {
-    case 1: return "#f59e0b"; // WARNING - Orange
-    case 2: return "#ef4444"; // COMPROMISED - Red
-    case 3: return "#6b7280"; // ISOLATED - Grey
-    case 0: 
-    default: return "#10b981"; // NORMAL - Green
-  }
-};
 
 export default function SceneCanvas() {
   const nodes = useGridStore((s) => s.nodes);
@@ -27,43 +14,36 @@ export default function SceneCanvas() {
 
   return (
     <Canvas
-      camera={{ position: [0, 12, 18], fov: 55 }}
+      camera={{ position: [0, 14, 20], fov: 50 }}
       style={{ width: '100%', height: '100%' }}
       gl={{ antialias: true, alpha: false }}
       onCreated={({ gl }) => {
-        gl.setClearColor('#0a0e1a');
+        gl.setClearColor('#060912');
         gl.toneMapping = 2; // ACESFilmic
-        gl.toneMappingExposure = 1.2;
+        gl.toneMappingExposure = 1.1;
       }}
     >
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 20, 5]} intensity={1.2} castShadow />
-
-      {/* Conditional red point lights for compromised nodes */}
-      {nodes.filter(n => n.status === 'compromised').map(n => (
-        <pointLight
-          key={`glow-${n.id}`}
-          position={[n.position3D.x, 3, n.position3D.z]}
-          color="#ff2244"
-          intensity={2}
-          distance={5}
-          decay={2}
-        />
-      ))}
+      {/* Single dominant directional light from above-front + low ambient fill */}
+      <ambientLight intensity={0.25} color="#b8c4d0" />
+      <directionalLight
+        position={[5, 25, 10]}
+        intensity={1.4}
+        castShadow
+        color="#e8edf2"
+      />
 
       {/* Environment */}
-      <Skybox />
       <GroundPlane />
 
-      {/* Controls */}
+      {/* Controls — locked vertical tilt within comfortable range */}
       <OrbitControls
-        maxPolarAngle={Math.PI / 2.2}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 2.5}
         enablePan
         enableZoom
         enableRotate
-        minDistance={5}
-        maxDistance={40}
+        minDistance={8}
+        maxDistance={35}
         zoomSpeed={0.8}
       />
 

@@ -1,10 +1,9 @@
-// TowerHUD.jsx — Always-visible billboard label above each tower
+// TowerHUD.jsx — Always-visible billboard label: Node N + status dot only
 import { Html } from '@react-three/drei';
 import { STATUS_COLORS } from '../../constants/theme';
 
 export default function TowerHUD({ node }) {
   const statusColor = STATUS_COLORS[node.status] || STATUS_COLORS.normal;
-  const load = node.displayedLoad ?? node.currentLoad;
 
   return (
     <Html
@@ -15,21 +14,15 @@ export default function TowerHUD({ node }) {
       zIndexRange={[100, 0]}
     >
       <div className="tower-hud">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
           <span
             className="status-dot"
-            style={{ backgroundColor: statusColor }}
+            style={{ backgroundColor: statusColor, boxShadow: `0 0 6px ${statusColor}` }}
           />
-          <span className="node-id">{node.id}</span>
-          {node.attackActive && (
+          <span className="node-id">Node {node.id}</span>
+          {node.attackActive && !node.attackIntercepted && (
             <span className="attack-warn">⚠</span>
           )}
-        </div>
-        <div className="hud-stat">
-          <span>{load.toFixed(1)}</span> MW
-        </div>
-        <div className="hud-stat">
-          <span>{node.packetRate}</span>/s
         </div>
       </div>
     </Html>

@@ -65,16 +65,10 @@ export default function GridTower({ node }) {
   const groupRef = useRef();
   const ringRef = useRef();
   const [hovered, setHovered] = useState(false);
-  const selectNode = useGridStore((s) => s.selectNode);
+  const navigateToScada = useGridStore((s) => s.navigateToScada);
 
   const position = [node.position3D.x, node.position3D.y, node.position3D.z];
   const glowColor = STATUS_GLOW_COLORS[node.status] || STATUS_GLOW_COLORS.normal;
-  const glowIntensity = {
-    normal: 0.5,
-    high: 1.0,
-    compromised: 2.0,
-    isolated: 0.3,
-  }[node.status] || 0.5;
 
   const loadRatio = Math.min(node.currentLoad / node.capacity, 1.2);
 
@@ -82,12 +76,12 @@ export default function GridTower({ node }) {
   useFrame((state, delta) => {
     if (ringRef.current) {
       const time = state.clock.elapsedTime;
-      const pulse = 1.0 + (loadRatio * 0.5) * Math.sin(time * (1 + loadRatio * 3)) * 0.5;
+      const pulse = 1.0 + (loadRatio * 0.3) * Math.sin(time * (1 + loadRatio * 2)) * 0.4;
       ringRef.current.scale.set(pulse, pulse, 1);
     }
 
     if (groupRef.current) {
-      const targetScale = hovered ? 1.1 : 1.0;
+      const targetScale = hovered ? 1.08 : 1.0;
       const current = groupRef.current.scale.x;
       const lerped = THREE.MathUtils.lerp(current, targetScale, 8 * delta);
       groupRef.current.scale.set(lerped, lerped, lerped);
@@ -100,37 +94,28 @@ export default function GridTower({ node }) {
       position={position}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
       onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'default'; }}
-      onClick={(e) => { e.stopPropagation(); selectNode(node.id); }}
+      onClick={(e) => { e.stopPropagation(); navigateToScada(node.id); }}
     >
       {/* GLB Tower or Fallback */}
       <TowerModelSafe node={node} position={position} />
 
-      {/* Status Glow Light */}
-      <pointLight
-        position={[0, 4, 0]}
-        color={glowColor}
-        intensity={glowIntensity}
-        distance={6}
-        decay={2}
-      />
-
-      {/* Pulsing Ring */}
+      {/* Pulsing Ring — subtle glow, no pointLight */}
       <mesh
         ref={ringRef}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.02, 0]}
       >
-        <torusGeometry args={[0.8, 0.05, 8, 32]} />
+        <torusGeometry args={[0.8, 0.04, 8, 32]} />
         <meshStandardMaterial
           color={glowColor}
           emissive={glowColor}
-          emissiveIntensity={0.8}
+          emissiveIntensity={0.6}
           transparent
-          opacity={0.6}
+          opacity={0.5}
         />
       </mesh>
 
-      {/* Always-visible HUD */}
+      {/* Always-visible HUD — Node N + status dot only */}
       <TowerHUD node={node} />
 
       {/* Hover Tooltip */}

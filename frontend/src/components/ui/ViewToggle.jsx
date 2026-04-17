@@ -1,4 +1,4 @@
-// ViewToggle.jsx — 3D ↔ 2D toggle button
+// ViewToggle.jsx — 3D ↔ 2D subdued pill toggle
 import useGridStore from '../../store/useGridStore';
 
 export default function ViewToggle() {
@@ -11,16 +11,14 @@ export default function ViewToggle() {
         <button
           className={`pill ${viewMode === '3d' ? 'active' : ''}`}
           onClick={() => setViewMode('3d')}
-          style={{ fontSize: 12 }}
         >
-          🏙 3D City
+          3D
         </button>
         <button
           className={`pill ${viewMode === '2d' ? 'active' : ''}`}
           onClick={() => setViewMode('2d')}
-          style={{ fontSize: 12 }}
         >
-          🔗 2D Network
+          2D
         </button>
       </div>
     </div>
