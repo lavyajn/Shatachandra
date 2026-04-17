@@ -1,60 +1,48 @@
-// useGridStore.js — Zustand Global Store (backend2 compatible)
 import { create } from 'zustand';
 
-const useGridStore = create((set, get) => ({
+const useGridStore = create((set) => ({
   nodes: [],
   edges: [],
   logs: [],
   selectedNodeId: null,
   viewMode: '3d',
-  connectionStatus: 'connecting',
-  decisionLog: '',  // Global decision log from C++ engine
+  connectionStatus: 'disconnected',
+  
+  // The state variable for the engine's text
+  decisionLog: 'System Stable. Monitoring packet flow.',
+  
+  simStatus: 'IDLE',
+  activeScenario: null,
 
-  // Actions
-  setNodes: (nodes) => set({ nodes }),
-  setEdges: (edges) => set({ edges }),
-
-  addLog: (entry) => set((state) => {
-    const newLogs = [...state.logs, entry];
-    if (newLogs.length > 200) {
-      return { logs: newLogs.slice(-200) };
-    }
-    return { logs: newLogs };
-  }),
-
-  clearLogs: () => set({ logs: [] }),
-
-  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
-
-  setViewMode: (mode) => set({ viewMode: mode }),
-
-  setConnectionStatus: (status) => set({ connectionStatus: status }),
-
+  // --- THE MISSING SETTERS ---
+  
+  // This fixes your current "socketClient.js:351" error
   setDecisionLog: (log) => set({ decisionLog: log }),
 
-  resetState: () => set({
-    nodes: [],
-    edges: [],
-    logs: [],
-    selectedNodeId: null,
-    decisionLog: '',
-  }),
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
+  
+  setNodes: (nodes) => set({ nodes: nodes || [] }),
+  setEdges: (edges) => set({ edges: edges || [] }),
+  
+  // Adds to the log feed history
+  addLog: (log) => set((state) => ({ 
+    logs: [log, ...state.logs].slice(0, 50) 
+  })),
 
-  // Update full state from server
-  updateFromServer: (state) => set((prev) => {
-    // Auto-clear selection if node no longer exists
-    if (prev.selectedNodeId && !state.nodes.find(n => n.id === prev.selectedNodeId)) {
-      return {
-        nodes: state.nodes,
-        edges: state.edges,
-        selectedNodeId: null,
-      };
-    }
-    return {
-      nodes: state.nodes,
-      edges: state.edges,
-    };
-  }),
+  startSimulation: (type) => set({ simStatus: 'RUNNING', activeScenario: type }),
+  
+  stopSimulation: () => set({ simStatus: 'IDLE', activeScenario: null }),
+
+  // Unified update function for the high-speed telemetry
+  updateFromServer: (data) => set((state) => ({
+    nodes: data.nodes || [],
+    edges: data.edges || [],
+    // Update decision log only if it's provided in the ZMQ payload
+    decisionLog: data.decision_log || state.decisionLog,
+    connectionStatus: 'connected'
+  })),
+
+  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 }));
 
 export default useGridStore;

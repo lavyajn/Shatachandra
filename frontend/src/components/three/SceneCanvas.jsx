@@ -7,6 +7,18 @@ import TransmissionLine from './TransmissionLine';
 import GroundPlane from './GroundPlane';
 import Skybox from './Skybox';
 
+
+
+export const getStatusColor = (status) => {
+  switch (Number(status)) {
+    case 1: return "#f59e0b"; // WARNING - Orange
+    case 2: return "#ef4444"; // COMPROMISED - Red
+    case 3: return "#6b7280"; // ISOLATED - Grey
+    case 0: 
+    default: return "#10b981"; // NORMAL - Green
+  }
+};
+
 export default function SceneCanvas() {
   const nodes = useGridStore((s) => s.nodes);
   const edges = useGridStore((s) => s.edges);

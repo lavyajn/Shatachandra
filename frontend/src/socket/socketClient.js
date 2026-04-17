@@ -295,6 +295,7 @@ function connect() {
   ws.onmessage = (event) => {
     try {
       const rawData = JSON.parse(event.data);
+      console.log("Telemetry received:", rawData);
       const transformed = transformBackend2Data(rawData);
 
       useGridStore.getState().updateFromServer({
@@ -372,6 +373,54 @@ function scheduleReconnect() {
     reconnectTimeout = null;
     connect();
   }, delay);
+}
+
+// ... add these functions to your existing socketClient.js ...
+
+export function triggerScenario(type) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const payload = JSON.stringify({
+      type: 'CONTROL',
+      command: 'START_SCENARIO',
+      scenario: type
+    });
+    ws.send(payload);
+    console.log(`[WS] Triggered Scenario: ${type}`);
+  }
+}
+
+
+
+export function stopScenario() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const payload = JSON.stringify({
+      type: 'CONTROL',
+      command: 'STOP_SCENARIO'
+    });
+    ws.send(payload);
+    console.log(`[WS] Simulation Stopped`);
+  }
+}
+
+/**
+ * Unified command function to send signals to the Node.js bridge.
+ * Handles both simple commands (STOP) and complex scenarios (START + Node ID).
+ */
+export function sendCommand(cmd, scenario = null, targetId = null) {
+  // Check if the global WebSocket instance (ws) is open
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const payload = JSON.stringify({ 
+      type: 'CONTROL', 
+      command: cmd, 
+      scenario: scenario, 
+      targetId: targetId 
+    });
+    
+    ws.send(payload);
+    console.log(`[WS] CONTROL Signal Sent: ${cmd} | Scenario: ${scenario} | Target: ${targetId}`);
+  } else {
+    console.error("[WS] Cannot send command: Connection is not open.");
+  }
 }
 
 // Start connection

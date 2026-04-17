@@ -2,13 +2,11 @@ const WebSocket = require('ws');
 
 let wss;
 
+// ws_server.js
 function startWsServer() {
     wss = new WebSocket.Server({ port: 8080 });
     console.log("🟢 WebSocket Server running on ws://localhost:8080");
-
-    wss.on('connection', (ws) => {
-        console.log("📡 Frontend UI connected to telemetry stream.");
-    });
+    return wss; // MUST ADD THIS LINE
 }
 
 function broadcastToReact(data) {
