@@ -19,7 +19,7 @@ export function DataLink({ start, end, status }) {
         if (!packetRef.current) return;
         
         // Speed multiplier (increase to make packets fly faster)
-        const speed = 2.5; 
+        const speed = 1.0; 
         const t = (clock.elapsedTime * speed) % 1; // Loops from 0.0 to 1.0
         
         // Lerp calculates the exact position on the line based on 't'
