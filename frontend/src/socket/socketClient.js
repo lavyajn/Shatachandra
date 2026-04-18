@@ -9,49 +9,65 @@ const WS_URL = 'ws://localhost:8080';
 
 const NODE_CONFIG = {
   '0': {
-    label: 'Node 0',
-    position3D: { x: -7, y: 0, z: -7 },
+    label: 'T1',
+    position3D: { x: -5, y: 0, z: -8 },
     baseLoad: 20,
     basePacketRate: 120,
   },
   '1': {
-    label: 'Node 1',
-    position3D: { x: 8, y: 0, z: -6 },
+    label: 'T2',
+    position3D: { x: 5, y: 0, z: -8 },
     baseLoad: 30,
     basePacketRate: 150,
   },
   '2': {
-    label: 'Node 2',
-    position3D: { x: 10, y: 0, z: 2 },
+    label: 'T3',
+    position3D: { x: 10, y: 0, z: 0 },
     baseLoad: 40,
     basePacketRate: 100,
   },
   '3': {
-    label: 'Node 3',
-    position3D: { x: 3, y: 0, z: 9 },
+    label: 'T4',
+    position3D: { x: 5, y: 0, z: 8 },
     baseLoad: 15,
     basePacketRate: 130,
   },
   '4': {
-    label: 'Node 4',
-    position3D: { x: -8, y: 0, z: 6 },
+    label: 'T5',
+    position3D: { x: -5, y: 0, z: 8 },
     baseLoad: 35,
     basePacketRate: 110,
   },
+  '5': {
+    label: 'T6',
+    position3D: { x: -10, y: 0, z: 0 },
+    baseLoad: 25,
+    basePacketRate: 140,
+  },
 };
 
-// Static edge topology matching the C++ graph
+// Static edge topology — 10-edge mesh for 6 towers (redundant power grid connections)
+// T1(0)↔T2(1), T1(0)↔T3(2), T2(1)↔T3(2), T2(1)↔T4(3),
+// T3(2)↔T4(3), T3(2)↔T5(4), T4(3)↔T5(4), T4(3)↔T6(5),
+// T5(4)↔T6(5), T6(5)↔T1(0)
 const STATIC_EDGES = [
   { id: '0-1', source: '0', target: '1', baseCapacity: 50, currentFlow: 10, stressed: false },
+  { id: '0-2', source: '0', target: '2', baseCapacity: 45, currentFlow: 12, stressed: false },
   { id: '1-2', source: '1', target: '2', baseCapacity: 60, currentFlow: 20, stressed: false },
+  { id: '1-3', source: '1', target: '3', baseCapacity: 40, currentFlow: 15, stressed: false },
   { id: '2-3', source: '2', target: '3', baseCapacity: 30, currentFlow: 10, stressed: false },
-  { id: '1-4', source: '1', target: '4', baseCapacity: 40, currentFlow: 15, stressed: false },
+  { id: '2-4', source: '2', target: '4', baseCapacity: 55, currentFlow: 18, stressed: false },
+  { id: '3-4', source: '3', target: '4', baseCapacity: 35, currentFlow: 12, stressed: false },
+  { id: '3-5', source: '3', target: '5', baseCapacity: 42, currentFlow: 14, stressed: false },
+  { id: '4-5', source: '4', target: '5', baseCapacity: 48, currentFlow: 16, stressed: false },
+  { id: '5-0', source: '5', target: '0', baseCapacity: 38, currentFlow: 11, stressed: false },
 ];
 
 function project3DTo2D(position3D) {
+  // Center the 2D projection around the graph viewport center
   return {
-    x: 350 + position3D.x * 25,
-    y: 250 + position3D.z * 20,
+    x: 400 + position3D.x * 22,
+    y: 300 + position3D.z * 22,
   };
 }
 
@@ -300,8 +316,11 @@ function transformBackend2Data(rawData) {
     return node;
   });
 
-  // Compute edge flows from node loads
-  const edges = STATIC_EDGES.map(edge => {
+  // Compute edge flows from node loads — only include edges where both nodes exist
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const edges = STATIC_EDGES
+    .filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target))
+    .map(edge => {
     const srcNode = nodes.find(n => n.id === edge.source);
     const tgtNode = nodes.find(n => n.id === edge.target);
     let currentFlow = edge.currentFlow;

@@ -1,4 +1,4 @@
-// GridTower.jsx — Tower model per node with status glow + pulsing ring
+// GridTower.jsx — Tower model per node with status glow + pulsing ring + Aegis Shield + Target Box
 import { useRef, useState, useMemo, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import useGridStore from '../../store/useGridStore';
 import TowerHUD from './TowerHUD';
 import TowerTooltip from './TowerTooltip';
+import AegisShield from './AegisShield';
+import TargetBox from './TargetBox';
 import { STATUS_GLOW_COLORS } from '../../constants/theme';
 
 function TowerModel({ node, position }) {
@@ -72,6 +74,10 @@ export default function GridTower({ node }) {
 
   const loadRatio = Math.min(node.currentLoad / node.capacity, 1.2);
 
+  // Determine defense/attack state for visual effects
+  const isDefended = node.attackIntercepted === true;
+  const isUnderAttack = node.attackActive === true && !node.attackIntercepted;
+
   // Animate pulsing ring and hover scale
   useFrame((state, delta) => {
     if (ringRef.current) {
@@ -114,6 +120,12 @@ export default function GridTower({ node }) {
           opacity={0.5}
         />
       </mesh>
+
+      {/* Aegis Shield — renders when tower is defended (attack intercepted by AI) */}
+      <AegisShield visible={isDefended} />
+
+      {/* Target Acquisition Box — renders when tower is under active attack (unblocked) */}
+      <TargetBox visible={isUnderAttack} />
 
       {/* Always-visible HUD — Node N + status dot only */}
       <TowerHUD node={node} />

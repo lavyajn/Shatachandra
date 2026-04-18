@@ -785,3 +785,139 @@ html, body, #root {
 select, option, input, textarea, button {
   font-family: 'Michroma', monospace;
 }
+
+/* ============ BREACH HUD TEXT (3D TargetBox overlay) ============ */
+.breach-hud {
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.breach-text {
+  font-family: 'Michroma', monospace;
+  font-size: 10px;
+  font-weight: 800;
+  color: #FF3333;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.4);
+  animation: breachFlicker 0.15s infinite alternate;
+  position: relative;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 51, 51, 0.4);
+  background: rgba(255, 0, 0, 0.08);
+}
+
+.breach-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 0, 0, 0.06) 2px,
+    rgba(255, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  animation: scanlineMove 2s linear infinite;
+}
+
+@keyframes breachFlicker {
+  0% { opacity: 0.85; transform: translateX(0px); }
+  25% { opacity: 1; transform: translateX(0.5px); }
+  50% { opacity: 0.9; transform: translateX(-0.3px); }
+  75% { opacity: 1; transform: translateX(0.2px); }
+  100% { opacity: 0.88; transform: translateX(0px); }
+}
+
+@keyframes scanlineMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+
+/* ============ STATUS LEGEND (ViewToggle) ============ */
+.status-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  opacity: 0.65;
+  transition: opacity 0.25s ease;
+}
+
+.status-legend:hover {
+  opacity: 1;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-icon.shield-icon {
+  background: transparent;
+  border: 2px solid #00D9FF;
+  box-shadow: 0 0 6px rgba(0, 217, 255, 0.5), inset 0 0 4px rgba(0, 217, 255, 0.2);
+}
+
+.legend-icon.attack-icon {
+  background: transparent;
+  border: 2px solid #FF3333;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255, 51, 51, 0.5), inset 0 0 4px rgba(255, 0, 0, 0.2);
+}
+
+.legend-icon.normal-icon {
+  background: rgba(0, 255, 204, 0.3);
+  border: 2px solid #00ffcc;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0, 255, 204, 0.4);
+}
+
+.legend-label {
+  font-size: 8px;
+  color: var(--text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ============ COLLAPSED PANEL DRAG FIX ============ */
+.floating-panel.collapsed {
+  cursor: move;
+  user-select: none;
+}
+
+.floating-panel.collapsed .collapsed-strip {
+  cursor: move;
+}
+
+.floating-panel.collapsed .strip-icon {
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.floating-panel.collapsed .strip-icon:hover {
+  transform: scale(1.1);
+}
+
+/* ============ ATTACK BUTTON GLOW ============ */
+@keyframes attackGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 0, 0, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(255, 0, 0, 0.4); }
+}

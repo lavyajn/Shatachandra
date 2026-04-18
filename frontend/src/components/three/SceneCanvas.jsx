@@ -15,11 +15,11 @@ export default function SceneCanvas() {
 
   return (
     <Canvas
-      camera={{ position: [0, 14, 20], fov: 50 }}
+      camera={{ position: [0, 18, 24], fov: 50 }}
       style={{ width: '100%', height: '100%' }}
       gl={{ antialias: true, alpha: false }}
       onCreated={({ gl }) => {
-        gl.setClearColor('#104beeab');
+        gl.setClearColor('#080c18');
         gl.toneMapping = 1; // ACESFilmic
         gl.toneMappingExposure = 1.1;
       }}
@@ -32,8 +32,14 @@ export default function SceneCanvas() {
         castShadow
         color="#e8edf2"
       />
+      {/* Secondary fill light from behind */}
+      <directionalLight
+        position={[-5, 15, -10]}
+        intensity={0.3}
+        color="#4488cc"
+      />
 
-<Skybox />
+      <Skybox />
       {/* Environment */}
       <GroundPlane />
 
@@ -45,8 +51,9 @@ export default function SceneCanvas() {
         enableZoom
         enableRotate
         minDistance={8}
-        maxDistance={35}
+        maxDistance={40}
         zoomSpeed={0.8}
+        target={[0, 0, 0]}
       />
 
       {/* Transmission Lines */}

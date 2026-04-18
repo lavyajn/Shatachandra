@@ -1,4 +1,4 @@
-// ViewToggle.jsx — 3D ↔ 2D subdued pill toggle
+// ViewToggle.jsx — 3D ↔ 2D subdued pill toggle with status legend
 import useGridStore from '../../store/useGridStore';
 
 export default function ViewToggle() {
@@ -20,6 +20,22 @@ export default function ViewToggle() {
         >
           2D
         </button>
+      </div>
+
+      {/* Status Legend */}
+      <div className="status-legend">
+        <div className="legend-item">
+          <span className="legend-icon shield-icon" />
+          <span className="legend-label">Aegis Shield (Protected)</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon attack-icon" />
+          <span className="legend-label">Target Acquired (Breach)</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon normal-icon" />
+          <span className="legend-label">Normal Operation</span>
+        </div>
       </div>
     </div>
   );

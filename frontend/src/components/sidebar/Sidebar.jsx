@@ -1,4 +1,6 @@
 // Sidebar.jsx — Floating, draggable sidebar with attack injection + defence toggle
+// CRITICAL FIX: Collapsed panel is now draggable via onMouseDown on outer div.
+// Drag position is preserved when toggling between collapsed/expanded states.
 import { useState } from 'react';
 import useGridStore from '../../store/useGridStore';
 import { sendCommand } from '../../socket/socketClient';
@@ -44,7 +46,8 @@ export default function Sidebar() {
     sendCommand(nextState ? 'DEFENSE_ON' : 'DEFENSE_OFF');
   };
 
-  // Collapsed icon strip
+  // Collapsed icon strip — FIXED: draggable via onMouseDown on outer div
+  // Position is preserved when toggling between states
   if (collapsed) {
     return (
       <div
@@ -52,12 +55,15 @@ export default function Sidebar() {
         style={{
           left: position.x,
           top: position.y,
+          cursor: 'move',
+          userSelect: 'none',
         }}
+        onMouseDown={handleMouseDown}
       >
         <div className="collapsed-strip">
           <div
             className="strip-icon"
-            onClick={() => setCollapsed(false)}
+            onClick={(e) => { e.stopPropagation(); setCollapsed(false); }}
             title="Expand Panel"
             style={{ color: '#00ffcc' }}
           >
@@ -72,6 +78,14 @@ export default function Sidebar() {
             🛡
           </div>
           <div className="strip-icon" title="Telemetry" style={{ color: '#94a3b8' }}>📊</div>
+          {/* Status indicator dot */}
+          <div
+            className="strip-icon"
+            title={simStatus === 'RUNNING' ? 'Attack Active' : 'System Idle'}
+            style={{ color: simStatus === 'RUNNING' ? '#ff3333' : '#00ffcc', fontSize: '8px' }}
+          >
+            {simStatus === 'RUNNING' ? '🔴' : '🟢'}
+          </div>
         </div>
       </div>
     );
@@ -92,6 +106,15 @@ export default function Sidebar() {
       <div className="drag-handle" onMouseDown={handleMouseDown}>
         <span className="handle-title">Control Panel</span>
         <div className="handle-actions">
+          {/* Connection indicator */}
+          <span style={{
+            fontSize: '8px',
+            color: '#00ffcc',
+            opacity: 0.6,
+            letterSpacing: '0.06em',
+          }}>
+            VAJRA
+          </span>
           <button
             className="collapse-btn"
             onClick={() => setCollapsed(true)}
@@ -129,13 +152,13 @@ export default function Sidebar() {
               onChange={(e) => setTargetNode(e.target.value)}
               style={{ width: '100%', padding: '7px', background: 'rgba(0,0,0,0.5)', color: '#ff3333', border: '1px solid rgba(239, 68, 68, 0.3)', outline: 'none', borderRadius: '4px', fontSize: '10px' }}
             >
-              {nodes.map(n => <option key={n.id} value={n.id}>Target: Node {n.id}</option>)}
+              {nodes.map(n => <option key={n.id} value={n.id}>Target: Tower {parseInt(n.id) + 1} (Node {n.id})</option>)}
             </select>
             <button
               onClick={handleStart}
-              style={{ width: '100%', padding: '9px', background: '#ff3333', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '10px', borderRadius: '4px' }}
+              style={{ width: '100%', padding: '9px', background: 'linear-gradient(135deg, #ff3333, #cc0000)', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '10px', borderRadius: '4px', boxShadow: '0 0 12px rgba(255, 0, 0, 0.2)' }}
             >
-              Execute Attack
+              ⚡ Execute Attack
             </button>
           </div>
         ) : (
@@ -143,7 +166,7 @@ export default function Sidebar() {
             onClick={handleStop}
             style={{ width: '100%', padding: '9px', background: 'transparent', color: '#ff3333', border: '1px solid #ff3333', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '10px', borderRadius: '4px' }}
           >
-            Terminate Sequence
+            ■ Terminate Sequence
           </button>
         )}
       </div>
@@ -157,8 +180,8 @@ export default function Sidebar() {
           style={defensePending ? { opacity: 0.5, cursor: 'wait' } : {}}
         >
           {defensePending
-            ? 'Defence: SYNCING...'
-            : isDefenseActive ? 'Defence: ON' : 'Defence: OFF'
+            ? '⟳ Defence: SYNCING...'
+            : isDefenseActive ? '🛡 Defence: ON' : '⚠ Defence: OFF'
           }
         </button>
       </div>
