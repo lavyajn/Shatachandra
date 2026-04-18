@@ -392,7 +392,7 @@ html, body, #root {
   z-index: 500;
   display: flex;
   flex-direction: column;
-  background: rgba(6, 9, 18, 0.92);
+  background: rgba(16, 53, 25, 0.136);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 255, 204, 0.15);
   border-radius: 10px;

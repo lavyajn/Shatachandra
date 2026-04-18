@@ -5,6 +5,7 @@ import useGridStore from '../../store/useGridStore';
 import GridTower from './GridTower';
 import TransmissionLine from './TransmissionLine';
 import GroundPlane from './GroundPlane';
+import Skybox from './Skybox';
 
 export default function SceneCanvas() {
   const nodes = useGridStore((s) => s.nodes);
@@ -18,8 +19,8 @@ export default function SceneCanvas() {
       style={{ width: '100%', height: '100%' }}
       gl={{ antialias: true, alpha: false }}
       onCreated={({ gl }) => {
-        gl.setClearColor('#060912');
-        gl.toneMapping = 2; // ACESFilmic
+        gl.setClearColor('#104beeab');
+        gl.toneMapping = 1; // ACESFilmic
         gl.toneMappingExposure = 1.1;
       }}
     >
@@ -32,6 +33,7 @@ export default function SceneCanvas() {
         color="#e8edf2"
       />
 
+<Skybox />
       {/* Environment */}
       <GroundPlane />
 

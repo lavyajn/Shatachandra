@@ -52,7 +52,7 @@ export default function LogFeed() {
             onClick={toggleMute}
             title={voiceMuted ? 'Unmute voice' : 'Mute voice'}
           >
-            {voiceMuted ? '🔇' : '🔊'}
+            {voiceMuted ? '🔊' : '🔇'}
           </button>
           <button
             style={{

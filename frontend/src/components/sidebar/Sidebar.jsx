@@ -105,7 +105,7 @@ export default function Sidebar() {
       {/* 1. Attack Orchestrator */}
       <div style={{
         padding: '16px',
-        background: 'rgba(239, 68, 68, 0.04)',
+        background: 'rgba(141, 49, 49, 0.04)',
         borderBottom: '1px solid rgba(239, 68, 68, 0.2)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#ff3333', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.12em' }}>

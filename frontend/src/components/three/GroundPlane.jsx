@@ -13,12 +13,12 @@ export default function GroundPlane() {
     const ctx = canvas.getContext('2d');
 
     // Dark background
-    ctx.fillStyle = '#060912';
+    ctx.fillStyle = '#0e173200';
     ctx.fillRect(0, 0, size, size);
 
     // Subtle grid lines — low opacity, muted color
     const gridSize = 32;
-    ctx.strokeStyle = 'rgba(0, 255, 204, 0.06)';
+    ctx.strokeStyle = '#00ffcc';
     ctx.lineWidth = 0.5;
     for (let i = 0; i <= size; i += gridSize) {
       ctx.beginPath();
@@ -63,7 +63,7 @@ export default function GroundPlane() {
       <meshStandardMaterial
         map={texture}
         transparent
-        opacity={0.5}
+        opacity={1}
         roughness={0.95}
         metalness={0.05}
       />
