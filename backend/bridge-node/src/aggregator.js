@@ -34,6 +34,11 @@ async function runAggregator() {
 
     ws.on('message', async (message) => {
       try {
+        // Parse the full JSON payload to extract scenario and targetId
+        let parsed = null;
+        const rawStr = Buffer.isBuffer(message) ? message.toString('utf8') : String(message);
+        try { parsed = JSON.parse(rawStr); } catch { parsed = null; }
+
         const cmd = normaliseCommand(message);
         console.log(`[BRIDGE] Normalised command received: "${cmd}"`);
 
@@ -55,9 +60,22 @@ async function runAggregator() {
         
         // ROUTE 3: Attack Initiation
         else if (cmd.includes('START')) {
-          const attack = cmd.includes('SPOOFING') ? 'SPOOFING' : (cmd.includes('FDI') ? 'FDI' : 'DDOS');
-          const targetMatch = cmd.match(/\d+/);
-          const target = targetMatch ? targetMatch[0] : '0';
+          // Extract attack type: prefer JSON 'scenario' field, then fall back to cmd string parsing
+          let attack;
+          if (parsed && parsed.scenario) {
+            attack = String(parsed.scenario).toUpperCase();
+          } else {
+            attack = cmd.includes('SPOOFING') ? 'SPOOFING' : (cmd.includes('FDI') ? 'FDI' : 'DDOS');
+          }
+
+          // Extract target node: prefer JSON 'targetId' field, then fall back to digit regex
+          let target;
+          if (parsed && parsed.targetId !== undefined && parsed.targetId !== null) {
+            target = String(parsed.targetId);
+          } else {
+            const targetMatch = cmd.match(/\d+/);
+            target = targetMatch ? targetMatch[0] : '0';
+          }
 
           console.log(`[BRIDGE] Launching Vector: ${attack} on Node ${target}`);
           await commandPub.send(`START_${attack}_${target}`);
