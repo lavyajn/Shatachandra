@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const useGridStore = create((set) => ({
+const useGridStore = create((set, get) => ({
   nodes: [],
   edges: [],
   logs: [], // Array of { level, timestamp, message } objects
@@ -15,12 +15,18 @@ const useGridStore = create((set) => ({
   decisionLog: 'System Stable. Monitoring packet flow.',
   simStatus: 'IDLE',
   activeScenario: null,
+  activeAttackType: null,  // Tracks the type of attack selected/running
+  attackStartTime: null,   // Global timestamp when attack was injected
 
   // Voice narration mute state
   voiceMuted: false,
 
-  // Defence engine state — OFF by default so attack chain demo is first
-  isDefenseActive: false,
+  // Defence engine state — reflects backend-confirmed state
+  isDefenseActive: true,  // Default ON (matches backend default)
+  defensePending: false,   // True while waiting for backend confirmation
+
+  // Edge attack highlight state — per-edge timers managed here
+  edgeHighlights: {},  // { edgeId: { color, expiresAt } }
 
   // Navigation actions
   navigateToScada: (nodeId) => set({ activeView: 'scada', selectedNodeId: nodeId }),
@@ -33,6 +39,27 @@ const useGridStore = create((set) => ({
   setEdges: (edges) => set({ edges: edges || [] }),
 
   toggleVoiceMute: () => set((state) => ({ voiceMuted: !state.voiceMuted })),
+
+  // Defence state set from backend confirmation — NOT optimistic
+  setDefenseState: (active) => set({ isDefenseActive: active, defensePending: false }),
+  setDefensePending: () => set({ defensePending: true }),
+
+  // Attack tracking
+  setActiveAttack: (type) => set({ activeAttackType: type, attackStartTime: Date.now() }),
+  clearActiveAttack: () => set({ activeAttackType: null, attackStartTime: null }),
+
+  // Edge highlight management
+  setEdgeHighlight: (edgeId, color) => set((state) => ({
+    edgeHighlights: {
+      ...state.edgeHighlights,
+      [edgeId]: { color, expiresAt: Date.now() + 2500 },
+    }
+  })),
+  clearEdgeHighlight: (edgeId) => set((state) => {
+    const copy = { ...state.edgeHighlights };
+    delete copy[edgeId];
+    return { edgeHighlights: copy };
+  }),
 
   // Adds to the log feed history (Safely formats strings into objects)
   addLog: (logData) => set((state) => {
@@ -68,8 +95,8 @@ const useGridStore = create((set) => ({
   // THE FIX: Wipes the array clean
   clearLogs: () => set({ logs: [] }),
 
-  startSimulation: (type) => set({ simStatus: 'RUNNING', activeScenario: type }),
-  stopSimulation: () => set({ simStatus: 'IDLE', activeScenario: null }),
+  startSimulation: (type) => set({ simStatus: 'RUNNING', activeScenario: type, activeAttackType: type, attackStartTime: Date.now() }),
+  stopSimulation: () => set({ simStatus: 'IDLE', activeScenario: null, activeAttackType: null, attackStartTime: null }),
 
   // Unified update function for the high-speed telemetry
   updateFromServer: (data) => set((state) => ({

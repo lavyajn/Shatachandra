@@ -12,7 +12,8 @@ export default function Sidebar() {
   const stopSimulation = useGridStore((s) => s.stopSimulation);
 
   const isDefenseActive = useGridStore((s) => s.isDefenseActive);
-  const toggleDefense = useGridStore((s) => s.toggleDefense);
+  const defensePending = useGridStore((s) => s.defensePending);
+  const setDefensePending = useGridStore((s) => s.setDefensePending);
 
   const [selectedAttack, setSelectedAttack] = useState('DDOS');
   const [targetNode, setTargetNode] = useState('0');
@@ -33,9 +34,13 @@ export default function Sidebar() {
     sendCommand('STOP_ATTACK');
   };
 
+  // Defence toggle: emit WS command immediately on click.
+  // Do NOT flip the visual indicator optimistically — wait for backend confirmation
+  // via the defense_active flag in the next telemetry broadcast.
   const handleDefenseToggle = () => {
+    if (defensePending) return; // Debounce while waiting for confirmation
     const nextState = !isDefenseActive;
-    toggleDefense();
+    setDefensePending();
     sendCommand(nextState ? 'DEFENSE_ON' : 'DEFENSE_OFF');
   };
 
@@ -143,13 +148,18 @@ export default function Sidebar() {
         )}
       </div>
 
-      {/* 2. Defence Toggle — clearly labelled ON/OFF */}
+      {/* 2. Defence Toggle — reflects backend-confirmed state, not optimistic */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0, 255, 204, 0.15)' }}>
         <button
           className={`defence-toggle ${isDefenseActive ? 'on' : 'off'}`}
           onClick={handleDefenseToggle}
+          disabled={defensePending}
+          style={defensePending ? { opacity: 0.5, cursor: 'wait' } : {}}
         >
-          {isDefenseActive ? 'Defence: ON' : 'Defence: OFF'}
+          {defensePending
+            ? 'Defence: SYNCING...'
+            : isDefenseActive ? 'Defence: ON' : 'Defence: OFF'
+          }
         </button>
       </div>
 

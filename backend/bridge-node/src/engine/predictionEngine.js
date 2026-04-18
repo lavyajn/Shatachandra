@@ -1,59 +1,75 @@
-// src/engine/predictionEngine.js
-const { NodeStatus, EngineParams, edges } = require('../config/gridConfig');
+// src/engine/predictionEngine.js — Firewall Mode vs Silent Bypass
+const { NodeStatus, EngineParams } = require('../config/gridConfig');
 
-function executeSmartDefense(nodes, threatNode) {
-  const neighbors = edges
-    .filter(e => e.target === threatNode.id && e.is_active)
-    .map(e => nodes.find(n => n.id === e.source));
+// FIREWALL LOGIC: executeSmartDefense
+// The AI does NOT shut nodes down. It purges the threat and
+// stabilises the node so it stays online — like a real firewall.
+function executeSmartDefense(node) {
+  console.log(`[AI] Intercept on Node ${node.id} — purging threat`);
 
-  const cascadeRisk = neighbors.some(n => (n.current_load + (threatNode.current_load / neighbors.length)) > n.max_capacity);
+  // Drop all malicious packets
+  node.incoming_packets = 0;
 
-  if (cascadeRisk) {
-    threatNode.incoming_packets *= 0.2; 
-    return `[PREDICTION] Isolation risk high. Applying Rate Limiting to Node ${threatNode.id}`;
-  } else {
-    threatNode.status = NodeStatus.ISOLATED;
-    threatNode.current_load = 0;
-    return `[PREDICTION] Isolation safe. Node ${threatNode.id} isolated.`;
-  }
+  // Reset load to safe 70% capacity
+  node.current_load = node.max_capacity * 0.70;
+
+  // Restore partial trust — gives time to naturally recover
+  node.trust_score = Math.max(50, node.trust_score);
+
+  // WARNING — not ISOLATED. Node stays ONLINE.
+  node.status = NodeStatus.WARNING;
+
+  return {
+    action: 'FIREWALL_INTERCEPT',
+    nodeId: node.id,
+    text: `[AI FIREWALL] Threat purged on Node ${node.id} — load stabilised, node online`,
+  };
 }
 
-/**
- * @param {Array} nodes - Current grid state
- * @param {Object} currentDecision - Reference to the UI log object
- * @param {Boolean} isDefenseActive - The new toggle from your Sidebar
- */
-function evaluateAndDefend(nodes, currentDecision, isDefenseActive) {
+function evaluateAndDefend(nodes, edges, currentDecision, state) {
+  // FIREWALL LOGIC: Defence is OFF — AI takes zero action.
+  // Log the failure for telemetry visibility but do not touch node state.
+  // The simulationEngine owns all state changes when defence is bypassed.
+  if (!state.isDefenseActive) {
+    const failing = nodes.filter(n =>
+      n.status !== NodeStatus.ISOLATED &&
+      (n.trust_score <= EngineParams.CRITICAL_TRUST ||
+       n.current_load > n.max_capacity * 0.9)
+    );
+    failing.forEach(n =>
+      console.log(`[AI BYPASSED] Node ${n.id} failing — trust: ${n.trust_score.toFixed(1)}, load: ${n.current_load.toFixed(1)} — no intervention`)
+    );
+    return; // Hard exit — nothing else runs
+  }
+
+  // DEFENCE ON: evaluate and intercept
   for (const node of nodes) {
     if (node.status === NodeStatus.ISOLATED) continue;
 
-    // 1. Trust Scoring Logic
+    // 1. Trust Scoring — always runs when defence is active
     if (node.incoming_packets > EngineParams.DDOS_THRESHOLD) {
       node.trust_score -= EngineParams.TRUST_DECAY;
-      node.status = NodeStatus.WARNING;
     } else if (node.trust_score < 100.0) {
       node.trust_score += 0.5; 
       if (node.trust_score > 80.0 && node.status === NodeStatus.WARNING) {
         node.status = NodeStatus.NORMAL;
       }
     }
-
-    // 2. ATOMIC CLAMP: Trust score $T$ is bounded by $0 \le T \le 100$
     node.trust_score = Math.max(0, Math.min(100, node.trust_score));
 
-    // 3. THE TOGGLE LOGIC
-    if (node.trust_score <= EngineParams.CRITICAL_TRUST && node.status !== NodeStatus.ISOLATED) {
-      
-      if (isDefenseActive) {
-        // AI IS ACTIVE: Protect the grid
-        if (node.status !== NodeStatus.COMPROMISED) {
-          node.status = NodeStatus.COMPROMISED;
-          currentDecision.text = executeSmartDefense(nodes, node);
-        }
-      } else {
-        // AI IS DISABLED: Report failure but take NO action
-        node.status = NodeStatus.COMPROMISED; // Turns it Red for the user
-        currentDecision.text = `⚠️ [CRITICAL] Node ${node.id} trust failure! Defense is OFF — System vulnerability exposed.`;
+    // 2. Threat Detection — trigger intercept when critical
+    const isCompromised = node.trust_score <= EngineParams.CRITICAL_TRUST;
+    const isAboutToExplode = node.current_load > node.max_capacity * 0.90;
+
+    if (isCompromised || isAboutToExplode) {
+      // Only trigger if node isn't already stabilised (WARNING or NORMAL)
+      if (node.status !== NodeStatus.WARNING && node.status !== NodeStatus.NORMAL) {
+        const result = executeSmartDefense(node);
+        currentDecision.text = result.text;
+      } else if (node.status === NodeStatus.WARNING && (isCompromised || isAboutToExplode)) {
+        // Re-apply firewall if the node is WARNING but still under heavy attack
+        const result = executeSmartDefense(node);
+        currentDecision.text = result.text;
       }
     }
   }

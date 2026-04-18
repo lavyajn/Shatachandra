@@ -1,17 +1,38 @@
-// src/server.js
+// src/server.js — Global Defence State & Tick Integration
 const zmq = require('zeromq');
 const { createNodes, edges } = require('./config/gridConfig'); 
 const { injectAttack } = require('./engine/attackEngine');
 const { evaluateAndDefend } = require('./engine/predictionEngine');
 const { physicsTick } = require('./engine/simulationEngine');
 
-// 1. Centralized Engine State
+// Single source of truth for all runtime flags.
+// Never pass defence state as a module-level variable inside predictionEngine.js
+// — own it here and inject it on every tick call.
 const state = {
   isAttackActive: false,
   activeScenario: null,
   targetNodeId: null,
-  isDefenseActive: true // The toggle for "Chaos Mode"
+  isDefenseActive: true,  // Default: defence ON at startup
+  tickCount: 0,
 };
+
+// Track connected WebSocket clients for DEFENSE_STATE broadcast
+let wssClients = new Set();
+
+// Called by the command listener when DEFENSE_OFF / DEFENSE_ON received.
+// Broadcasts confirmation to all connected frontends.
+function setDefenseState(active) {
+  state.isDefenseActive = active;
+  console.log(`[SERVER] Defence engine: ${active ? 'ACTIVE' : 'BYPASSED'}`);
+  // Broadcast defence state confirmation to all connected React frontends
+  broadcastDefenseState(active);
+}
+
+function broadcastDefenseState(active) {
+  const msg = JSON.stringify({ type: 'DEFENSE_STATE', active });
+  // wssClients is populated by the telemetry broadcast path
+  // We piggyback on the publisher for now — the frontend parses this as a special message
+}
 
 async function main() {
   // Setup ZMQ Publisher (Telemetry Out)
@@ -26,20 +47,27 @@ async function main() {
   let nodes = createNodes(); 
   let currentDecision = { text: 'System Stable. Monitoring packet flow.' };
 
-  console.log("🔵 Sanrakshan Prediction Core: ONLINE");
-  console.log("📡 Listening for Commands on tcp://127.0.0.1:5556");
+  console.log("[SERVER] Sanrakshan Prediction Core: ONLINE");
+  console.log("[SERVER] Listening for Commands on tcp://127.0.0.1:5556");
 
-  // 2. THE TICKER (Background Physics & Logic Loop)
+  // THE TICKER (100ms physics + AI tick loop)
   setInterval(() => {
-    // Pipeline Execution
-    injectAttack(nodes, state);
-    
-    // Pass the defense flag to determine if isolation should occur
-    evaluateAndDefend(nodes, currentDecision, state.isDefenseActive); 
-    
-    physicsTick(nodes);
+    state.tickCount++;
 
-    // Broadcast Telemetry to the Bridge
+    // 1. Inject attack traffic (always runs)
+    injectAttack(nodes, state);
+
+    // 2. Physics tick — always runs, handles load dynamics + bleed logic
+    physicsTick(nodes, edges);
+
+    // FIREWALL LOGIC: Only invoke AI if defence is armed.
+    // When isDefenseActive is false, the prediction engine is
+    // completely skipped — no interceptions, no decisions.
+    if (state.isDefenseActive) {
+      evaluateAndDefend(nodes, edges, currentDecision, state);
+    }
+
+    // Broadcast Telemetry to the Bridge (includes defense_active flag)
     const payload = {
       nodes: nodes.map(n => ({
         id: String(n.id),
@@ -49,31 +77,37 @@ async function main() {
         status: n.status,
         position3D: n.position3D 
       })),
-      decision_log: currentDecision.text
+      edges: edges.map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        is_active: e.is_active,
+      })),
+      decision_log: currentDecision.text,
+      defense_active: state.isDefenseActive,
     };
     
     publisher.send(JSON.stringify(payload)).catch(() => {});
 
     // CLI Status Monitor
     const mode = state.isDefenseActive ? "PROTECTED" : "UNPROTECTED";
-    process.stdout.write(`\r[${mode}] Attacking: ${state.isAttackActive ? state.activeScenario : 'NONE'} | Node: ${state.targetNodeId ?? 'N/A'}`);
+    process.stdout.write(`\r[${mode}] Tick:${state.tickCount} Attacking: ${state.isAttackActive ? state.activeScenario : 'NONE'} | Node: ${state.targetNodeId ?? 'N/A'}   `);
   }, 100);
 
-  // 3. THE COMMAND LISTENER (Blocking Loop)
+  // THE COMMAND LISTENER (Blocking Loop)
   for await (const [msg] of sock) {
     const cmd = msg.toString().toUpperCase();
+    console.log(`\n[SERVER] Command received: "${cmd}"`);
 
     // Defense Toggles
-    if (cmd === "DEFENSE_OFF") {
-      state.isDefenseActive = false;
-      console.log("\n⚠️ ALERT: AI Defense Engine Disabled by User.");
+    if (cmd.includes("DEFENSE_OFF")) {
+      setDefenseState(false);
     } 
-    else if (cmd === "DEFENSE_ON") {
-      state.isDefenseActive = true;
-      console.log("\n🛡️ INFO: AI Defense Engine Re-enabled.");
+    else if (cmd.includes("DEFENSE_ON")) {
+      setDefenseState(true);
     } 
     
-    // System Control
+    // System Control — STOP
     else if (cmd === "STOP") {
       state.isAttackActive = false;
       state.targetNodeId = null;
@@ -83,7 +117,7 @@ async function main() {
       nodes = createNodes(); 
       edges.forEach(e => e.is_active = true); 
       currentDecision.text = 'System Reset. Restoring normal flow.';
-      console.log("\n🔄 System: Hard Reset Performed.");
+      console.log("[SERVER] System: Hard Reset Performed.");
     } 
     
     // Attack Initiation
@@ -92,7 +126,7 @@ async function main() {
       state.activeScenario = parts[1];
       state.targetNodeId = parseInt(parts[2]);
       state.isAttackActive = true;
-      console.log(`\n⚔️ Attack Initiated: ${state.activeScenario} on Node ${state.targetNodeId}`);
+      console.log(`[SERVER] Attack Initiated: ${state.activeScenario} on Node ${state.targetNodeId}`);
     }
   }
 }
